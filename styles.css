@@ -92,7 +92,7 @@ a { color: var(--accent); }
   background: #dbe3ea;
 }
 .map-controls {
-  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 20;
+  position: absolute; left: 8px; right: 8px; bottom: 12px; z-index: 1000;
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   pointer-events: none;
 }
@@ -129,7 +129,7 @@ a { color: var(--accent); }
 .news p { margin: 0; color: var(--muted); }
 
 .bottom-tab {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100;
   height: calc(var(--tab) + var(--safe-b));
   padding-bottom: var(--safe-b);
   background: var(--ink); color: #fff;
@@ -142,10 +142,10 @@ a { color: var(--accent); }
 }
 
 .backdrop {
-  position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 50;
+  position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 1500;
 }
 .drawer {
-  position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 1600;
   width: min(86vw, 320px); background: #fff;
   box-shadow: 4px 0 24px rgba(0,0,0,0.2);
   padding: 12px 0 80px; overflow: auto;
@@ -176,7 +176,7 @@ a { color: var(--accent); }
 .drawer-note { margin: 16px; font-size: 12px; color: var(--muted); line-height: 1.45; }
 
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1700;
   background: #fff; border-radius: 16px 16px 0 0;
   box-shadow: 0 -8px 30px rgba(0,0,0,0.2);
   padding: 8px 16px calc(24px + var(--tab) + var(--safe-b));
@@ -271,3 +271,22 @@ a { color: var(--accent); }
   .seg button { padding: 7px 8px; font-size: 11px; }
   .data-banner { font-size: 12px; text-align: left; }
 }
+
+.layer-list label { justify-content: flex-start; }
+.layer-list label > span:not(.layer-icon):not(.meta) { flex: 1; text-align: left; }
+.layer-list input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; margin: 0 0 0 auto;
+  flex: 0 0 18px; order: 5;
+  border: 2px solid #111827; border-radius: 4px;
+  background: #fff; cursor: pointer; position: relative;
+}
+.layer-list input[type="checkbox"]:checked {
+  background: #111827;
+}
+.layer-list input[type="checkbox"]:checked::after {
+  content: ""; position: absolute; left: 4px; top: 1px;
+  width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.layer-list .meta { order: 4; }
