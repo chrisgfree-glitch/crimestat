@@ -35,8 +35,12 @@ a { color: var(--accent); }
 }
 .skip:focus { top: 8px; }
 
+.chrome {
+  position: sticky; top: 0; z-index: 1800;
+  background: var(--ink);
+}
 .topbar {
-  position: sticky; top: 0; z-index: 40;
+  position: relative;
   display: flex; align-items: center; gap: 8px;
   height: var(--top); padding: 0 8px 0 4px;
   background: var(--ink); color: #fff;
@@ -75,7 +79,7 @@ a { color: var(--accent); }
 .search button:hover { background: #4b5563; }
 
 .data-banner {
-  position: sticky; top: var(--top); z-index: 30;
+  position: relative;
   background: #0f172a; color: #e5e7eb;
   padding: 8px 14px; font-size: 12.5px; line-height: 1.4;
   border-bottom: 1px solid #1f2937; text-align: center;
@@ -142,10 +146,11 @@ a { color: var(--accent); }
 }
 
 .backdrop {
-  position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 1500;
+  position: fixed; top: var(--chrome-h, 96px); right: 0; bottom: 0; left: 0;
+  background: rgba(15,23,42,0.45); z-index: 1500;
 }
 .drawer {
-  position: fixed; top: 0; bottom: 0; left: 0; z-index: 1600;
+  position: fixed; top: var(--chrome-h, 96px); bottom: 0; left: 0; z-index: 1600;
   width: min(86vw, 320px); background: #fff;
   box-shadow: 4px 0 24px rgba(0,0,0,0.2);
   padding: 12px 0 80px; overflow: auto;
@@ -290,3 +295,22 @@ a { color: var(--accent); }
   transform: rotate(45deg);
 }
 .layer-list .meta { order: 4; }
+
+.nbh-badge {
+  background: #fff;
+  border: 2px solid #111827;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 2px;
+  font: 700 11px/1 var(--font);
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+  white-space: nowrap;
+}
+.nbh-badge svg { width: 18px; height: 18px; display: block; flex: 0 0 18px; }
+.nbh-badge .nbh-n { font-variant-numeric: tabular-nums; }
+
+.cs-badge-wrap { background: none !important; border: 0 !important; }
+.cs-badge-wrap .nbh-badge { pointer-events: auto; }

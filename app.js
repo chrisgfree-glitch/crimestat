@@ -153,6 +153,24 @@
       nbhArea.get(n)[type] = (nbhArea.get(n)[type] || 0) + c;
     }
 
+    function badgeMarker(latlng, html, popupTitle, popupBody, popupNote, borderColor) {
+      const icon = L.divIcon({
+        className: "cs-badge-wrap",
+        html: `<div class="nbh-badge" style="border-color:${borderColor}">${html}</div>`,
+        iconSize: null,
+        iconAnchor: [20, 12],
+      });
+      return L.marker(latlng, { icon, keyboard: false, zIndexOffset: 200 })
+        .bindPopup(popupHtml(popupTitle, popupBody, popupNote));
+    }
+
+    function centroidOf(feat) {
+      const c = feat.properties && feat.properties.c;
+      if (c && Number.isFinite(c[1]) && Number.isFinite(c[0])) return [c[1], c[0]];
+      const b = L.geoJSON(feat).getBounds();
+      return b.getCenter();
+    }
+
     if (state.layers.calls && state.calls) {
       const callCounts = new Map();
       for (const [n, d, c] of state.calls.cells) {
@@ -165,16 +183,18 @@
         if (!count) continue;
         const color = "#5d6d7e";
         L.geoJSON(feat, {
-          style: {
-            color, weight: 1.2, fillColor: color, fillOpacity: 0.18,
-          },
-        })
-          .bindPopup(popupHtml(
-            "Calls (911/CAD), not confirmed crimes",
-            `<strong>${count.toLocaleString()}</strong> calls in ${feat.properties.name} during the selected window.`,
-            "This is the official calls-for-service feed (911, Crime Check, officer-initiated, dispatch). It is not a confirmed crime layer."
-          ))
-          .addTo(callsLayer);
+          style: { color, weight: 1.4, fillColor: "#ffffff", fillOpacity: 0, dashArray: "5 4" },
+          interactive: false,
+        }).addTo(callsLayer);
+        const svg = state.svg.calls || "";
+        badgeMarker(
+          centroidOf(feat),
+          `${svg}<span class="nbh-n">${count.toLocaleString()}</span>`,
+          "Calls (911/CAD), not confirmed crimes",
+          `<strong>${count.toLocaleString()}</strong> calls in ${feat.properties.name} during the selected window.`,
+          "This is the official calls-for-service feed (911, Crime Check, officer-initiated, dispatch). It is not a confirmed crime layer.",
+          color
+        ).addTo(callsLayer);
       }
     }
 
@@ -183,24 +203,21 @@
       const bag = nbhArea.get(id);
       if (!bag) continue;
       const types = Object.keys(bag);
-      const color = "#5b2c6f";
-      // Use the first visible sensitive color; stack opacity
-      types.forEach((type, i) => {
-        L.geoJSON(feat, {
-          style: {
-            color: "#111827",
-            weight: 1,
-            fillColor: typeColor(type),
-            fillOpacity: 0.22 + Math.min(i, 2) * 0.06,
-          },
-        })
-          .bindPopup(popupHtml(
-            feat.properties.name,
-            types.map((t) => `${LABELS[t]}: ${bag[t]}`).join("<br>"),
-            AREA_NOTE
-          ))
-          .addTo(areaLayer);
-      });
+      const total = types.reduce((s, typ) => s + bag[typ], 0);
+      const primary = types.slice().sort((a, b) => bag[b] - bag[a])[0];
+      const icons = types.slice(0, 3).map((typ) => state.svg[typ] || "").join("");
+      L.geoJSON(feat, {
+        style: { color: typeColor(primary), weight: 1.6, fillColor: "#ffffff", fillOpacity: 0 },
+        interactive: false,
+      }).addTo(areaLayer);
+      badgeMarker(
+        centroidOf(feat),
+        `${icons}<span class="nbh-n">${total.toLocaleString()}</span>`,
+        feat.properties.name,
+        types.map((typ) => `${LABELS[typ]}: ${bag[typ]}`).join("<br>"),
+        AREA_NOTE,
+        typeColor(primary)
+      ).addTo(areaLayer);
     }
 
     if (state.view === "heat") {
@@ -391,7 +408,15 @@
     document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
   }
 
+  function syncChromeHeight() {
+    const chrome = document.querySelector(".chrome");
+    if (!chrome) return;
+    const h = Math.ceil(chrome.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--chrome-h", `${h}px`);
+  }
+
   function openDrawer() {
+    syncChromeHeight();
     sheets.forEach((el) => { el.hidden = true; });
     drawer.hidden = false;
     backdrop.hidden = false;
@@ -412,7 +437,7 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     nbhLayer = L.geoJSON(null, {
-      style: { color: "#94a3b8", weight: 1, fillColor: "#cbd5e1", fillOpacity: 0.08 },
+      style: { color: "#64748b", weight: 1.15, fillColor: "#ffffff", fillOpacity: 0 },
       interactive: false,
     }).addTo(map);
     areaLayer = L.layerGroup().addTo(map);
@@ -438,6 +463,8 @@
   }
 
   function initEvents() {
+    window.addEventListener("resize", syncChromeHeight);
+    syncChromeHeight();
     document.getElementById("menuBtn").addEventListener("click", () => {
       if (!drawer.hidden) closeAll();
       else openDrawer();
@@ -571,6 +598,7 @@
     iconNames.forEach((name, i) => { state.svg[name] = svgs[i]; });
 
     document.getElementById("asOfBanner").textContent = meta.label;
+    syncChromeHeight();
     document.getElementById("settingsAbout").textContent =
       `${meta.label} Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat. ${meta.defaultWindowNote || ""}`;
 
