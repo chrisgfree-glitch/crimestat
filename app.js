@@ -91,11 +91,17 @@
     return L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
   }
 
+  function radiusBounds(lat, lng, meters) {
+    const dLat = meters / 111320;
+    const dLng = meters / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+    return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
+  }
+
   function viewIntersectsCoverage() {
     const cov = coverageBounds();
     if (!cov || !state.center) return false;
-    const circle = L.circle([state.center.lat, state.center.lng], { radius: MILES5 }).getBounds();
-    return cov.intersects(circle) || cov.contains([state.center.lat, state.center.lng]);
+    const around = radiusBounds(state.center.lat, state.center.lng, MILES5);
+    return cov.intersects(around) || cov.contains([state.center.lat, state.center.lng]);
   }
 
   function setLocMessage(text) {
@@ -269,6 +275,7 @@
       fillColor: "#2563eb",
       fillOpacity: 1,
     }).addTo(map);
+    map.invalidateSize();
     map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 14 });
     const covered = viewIntersectsCoverage();
     if (covered) {
