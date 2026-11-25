@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CrimeStat — Local Crime Map</title>
+  <meta name="description" content="CrimeStat is a free crime map with 19 toggleable crime-type layers. This first release uses clearly labeled demo data, not real crime reports.">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#111827">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip" href="#map">Skip to map</a>
+
+  <header class="topbar">
+    <button type="button" id="menuBtn" class="icon-btn" aria-label="Open menu" aria-controls="drawer" aria-expanded="false">
+      <span class="hamburger" aria-hidden="true"></span>
+    </button>
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" width="36" height="36" alt="">
+      <span>CrimeStat</span>
+    </a>
+    <form id="searchForm" class="search" role="search">
+      <label class="sr-only" for="searchInput">Address or ZIP</label>
+      <input id="searchInput" type="search" placeholder="Address or ZIP" autocomplete="off" enterkeyhint="search">
+      <button type="submit">Go</button>
+    </form>
+  </header>
+
+  <div class="demo-banner" role="status">
+    <strong>Demo data</strong> — These are simulated incidents for product preview, not real crime reports.
+  </div>
+
+  <div id="locBar" class="loc-bar">Turn on location or search an address to center the map.</div>
+
+  <main>
+    <div class="map-wrap">
+      <div id="map" role="application" aria-label="Crime map"></div>
+      <div class="map-controls">
+        <div class="seg" role="group" aria-label="Time window">
+          <button type="button" data-time="6m" class="is-on">6 months</button>
+          <button type="button" data-time="1y">1 year</button>
+          <button type="button" data-time="5y">5 years</button>
+        </div>
+        <div class="seg" role="group" aria-label="Map view">
+          <button type="button" data-view="heat">Heat map</button>
+          <button type="button" data-view="pins" class="is-on">Pins</button>
+        </div>
+        <button type="button" id="layersBtn" class="ctrl-btn">Layers</button>
+        <button type="button" id="locateBtn" class="ctrl-btn" aria-label="Use my location">My location</button>
+      </div>
+    </div>
+
+    <section class="news" aria-labelledby="newsHeading">
+      <h2 id="newsHeading">Local news</h2>
+      <p>Coming soon — crime and public safety stories for your area.</p>
+    </section>
+  </main>
+
+  <div id="backdrop" class="backdrop" hidden></div>
+
+  <nav id="drawer" class="drawer" hidden aria-label="Main menu">
+    <div class="drawer-head">
+      <img src="/assets/logo.png" width="40" height="40" alt="">
+      <div>
+        <strong>CrimeStat</strong>
+        <span>crimestat.net</span>
+      </div>
+      <button type="button" id="closeDrawer" class="icon-btn" aria-label="Close menu">×</button>
+    </div>
+    <ul>
+      <li><button type="button" data-open="alerts">Sign up for alerts</button></li>
+      <li><button type="button" data-open="settings">Settings</button></li>
+      <li><button type="button" data-open="layers">Crime layers</button></li>
+    </ul>
+    <p class="drawer-label">Coming soon</p>
+    <ul class="soon">
+      <li><span>Anonymous tip line</span><em>Coming soon</em></li>
+      <li><span>Hotspot forecasts</span><em>Coming soon</em></li>
+      <li><span>Community layer</span><em>Coming soon</em></li>
+    </ul>
+    <p class="drawer-note">Sensitive crime types (rape / sexual assault, domestic violence, stalking, and missing persons) are shown only as area totals, never as addresses.</p>
+  </nav>
+
+  <section id="panel-alerts" class="sheet" hidden aria-labelledby="alertsTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="alertsTitle">Sign up for alerts</h2>
+    <p>Get notified when demo incident patterns change near an address you care about. This form is a preview only — nothing is sent or stored on a server.</p>
+    <form id="alertsForm">
+      <label for="alertEmail">Email</label>
+      <input id="alertEmail" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+      <label for="alertPlace">Address or area (optional)</label>
+      <input id="alertPlace" name="place" type="text" autocomplete="street-address" placeholder="Address or ZIP">
+      <button type="submit" class="primary">Sign up for alerts</button>
+      <p id="alertsMsg" class="form-msg" hidden></p>
+    </form>
+    <button type="button" class="sheet-close">Close</button>
+  </section>
+
+  <section id="panel-settings" class="sheet" hidden aria-labelledby="settingsTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="settingsTitle">Settings</h2>
+    <ul class="settings-list">
+      <li><button type="button" id="resetFilters">Reset layers, time, and view</button></li>
+      <li><button type="button" id="settingsLocate">Use my location</button></li>
+    </ul>
+    <h3>About this data</h3>
+    <p>CrimeStat’s first release uses <strong>clearly labeled demo data</strong>. The points and area totals you see are simulated around the map center so the product can be tried. They are not police reports and should not be used for safety decisions.</p>
+    <p>When real feeds are connected, they will come from public sources such as city open-data portals or the FBI Crime Data Explorer, and sensitive types will stay at area level only.</p>
+    <button type="button" class="sheet-close">Close</button>
+  </section>
+
+  <section id="panel-layers" class="sheet" hidden aria-labelledby="layersTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="layersTitle">Crime layers</h2>
+    <div class="layer-actions">
+      <button type="button" id="layersAll">All on</button>
+      <button type="button" id="layersNone">All off</button>
+    </div>
+    <ul id="layerList" class="layer-list"></ul>
+    <p class="drawer-note">Types marked “area only” never show a pin or address.</p>
+    <button type="button" class="sheet-close">Close</button>
+  </section>
+
+  <section id="panel-download" class="sheet" hidden aria-labelledby="downloadTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="downloadTitle">Download our app</h2>
+    <p>The CrimeStat app for iPhone and Android is coming soon, with the same map and layers, built with Expo. This website is available now.</p>
+    <div class="store-row">
+      <span class="store-badge">iOS — coming soon</span>
+      <span class="store-badge">Android — coming soon</span>
+    </div>
+    <button type="button" class="sheet-close">Close</button>
+  </section>
+
+  <nav class="bottom-tab">
+    <button type="button" id="downloadBtn">Download our app</button>
+  </nav>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
