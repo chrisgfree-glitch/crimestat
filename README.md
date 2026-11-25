@@ -1,25 +1,25 @@
 # CrimeStat
 
-Interactive crime map at [crimestat.net](https://crimestat.net). First public version.
+Interactive crime map at [crimestat.net](https://crimestat.net) (until DNS is pointed, use the Vercel URL).
 
-This site is a mobile-first map with 19 toggleable crime-type layers, a 5-mile default radius, 6-month / 1-year / 5-year time windows, and a heat map or pin view. It ships as a website now; an iPhone and Android app (Expo) is planned.
+This site is a mobile-first map with 19 toggleable crime-type layers, a 5-mile default radius, time-window presets, and a heat map or pin view. An iPhone and Android app (Expo) is planned.
 
-## Demo data
+## Current data
 
-This first release uses **simulated demo data**, not real police reports. A “Demo data” banner stays on screen, and every popup says the same. Sensitive types (rape / sexual assault, domestic violence, stalking, and missing persons) are drawn only as area totals, never as addresses or pins.
+Official **City of Spokane Police Department** public records, May 1 to Sep 27, 2026 (as of Sep 27, 2026). The feed has been paused since Spokane’s October 2026 records-system switch.
 
-Demo incidents are generated around the map center (your location or a searched address) so the product can be tried anywhere. They should not be used for safety decisions. Real public sources (city open-data portals, FBI Crime Data Explorer) are planned for a later release.
+Sources are the city’s official ArcGIS FeatureServers only (`SPD_Offenses` layer 18 and `SPD_CallsForService` layer 16). Locations are shown at official neighborhood level only. Street addresses are not published on this site. Rape / sexual assault, domestic violence, and stalking are neighborhood totals, never pins. 911/CAD calls are a separate, default-off layer of unconfirmed calls for service.
+
+Areas outside Spokane show “No public data feed for this area yet.” There is no demo or simulated crime data on the live site.
+
+The default time window is the **full snapshot**. Six-month, 1-year, and 5-year presets are measured from the as-of date (Sep 27, 2026), not from today, because a rolling 6-month window from late November would cut off early May.
 
 ## Stack
 
 - Static site on Vercel
 - Leaflet + OpenStreetMap tiles
-- Nominatim geocoding via `/api/geocode` (server-side, identified User-Agent, cached)
+- Nominatim geocoding via `/api/geocode`
 
 ## Local run
 
-This is a static site plus one Vercel Function. Preview with the Vercel CLI (`vercel dev`) or any static server for the front end (address search needs the API route).
-
-## License
-
-Private project for Christopher Grantham.
+Preview with the Vercel CLI (`vercel dev`) or any static server for the front end (address search needs the API route).

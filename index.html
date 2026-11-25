@@ -4,13 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>CrimeStat — Local Crime Map</title>
-  <meta name="description" content="CrimeStat is a free crime map with 19 toggleable crime-type layers. This first release uses clearly labeled demo data, not real crime reports.">
+  <meta name="description" content="CrimeStat is a free crime map with 19 toggleable crime-type layers. Current coverage: official Spokane Police Department public data, May 1 to Sep 27, 2026.">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#111827">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -26,23 +28,26 @@
     </a>
     <form id="searchForm" class="search" role="search">
       <label class="sr-only" for="searchInput">Address or ZIP</label>
-      <input id="searchInput" type="search" placeholder="Address or ZIP" autocomplete="off" enterkeyhint="search">
+      <input id="searchInput" type="search" placeholder="Address, ZIP, or city" autocomplete="off" enterkeyhint="search">
       <button type="submit">Go</button>
     </form>
   </header>
 
-  <div class="demo-banner" role="status">
-    <strong>Demo data</strong> — These are simulated incidents for product preview, not real crime reports.
-  </div>
-
+  <div id="asOfBanner" class="data-banner" role="status">Loading official data…</div>
   <div id="locBar" class="loc-bar">Turn on location or search an address to center the map.</div>
 
   <main>
     <div class="map-wrap">
       <div id="map" role="application" aria-label="Crime map"></div>
+      <div id="emptyState" class="empty-state" hidden>
+        <p><strong>No public data feed for this area yet.</strong></p>
+        <p>Official Spokane Police Department data is available. Search Spokane to view it.</p>
+        <button type="button" id="jumpSpokane" class="primary">View Spokane</button>
+      </div>
       <div class="map-controls">
         <div class="seg" role="group" aria-label="Time window">
-          <button type="button" data-time="6m" class="is-on">6 months</button>
+          <button type="button" data-time="snapshot" class="is-on">Full snapshot</button>
+          <button type="button" data-time="6m">6 months</button>
           <button type="button" data-time="1y">1 year</button>
           <button type="button" data-time="5y">5 years</button>
         </div>
@@ -82,14 +87,15 @@
       <li><span>Anonymous tip line</span><em>Coming soon</em></li>
       <li><span>Hotspot forecasts</span><em>Coming soon</em></li>
       <li><span>Community layer</span><em>Coming soon</em></li>
+      <li><span>Near-miss reports</span><em>Coming soon</em></li>
     </ul>
-    <p class="drawer-note">Sensitive crime types (rape / sexual assault, domestic violence, stalking, and missing persons) are shown only as area totals, never as addresses.</p>
+    <p class="drawer-note">Rape / sexual assault, domestic violence, and stalking are shown only as neighborhood totals, never as pins or addresses. Missing-person pins from a legal public source are not in this build yet.</p>
   </nav>
 
   <section id="panel-alerts" class="sheet" hidden aria-labelledby="alertsTitle">
     <div class="sheet-handle"></div>
     <h2 id="alertsTitle">Sign up for alerts</h2>
-    <p>Get notified when demo incident patterns change near an address you care about. This form is a preview only — nothing is sent or stored on a server.</p>
+    <p>Saved-location alerts are coming soon. This form is a preview only — nothing is sent or stored on a server.</p>
     <form id="alertsForm">
       <label for="alertEmail">Email</label>
       <input id="alertEmail" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
@@ -107,10 +113,11 @@
     <ul class="settings-list">
       <li><button type="button" id="resetFilters">Reset layers, time, and view</button></li>
       <li><button type="button" id="settingsLocate">Use my location</button></li>
+      <li><button type="button" id="settingsSpokane">View Spokane data</button></li>
     </ul>
     <h3>About this data</h3>
-    <p>CrimeStat’s first release uses <strong>clearly labeled demo data</strong>. The points and area totals you see are simulated around the map center so the product can be tried. They are not police reports and should not be used for safety decisions.</p>
-    <p>When real feeds are connected, they will come from public sources such as city open-data portals or the FBI Crime Data Explorer, and sensitive types will stay at area level only.</p>
+    <p id="settingsAbout">Official City of Spokane Police Department public records. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat.</p>
+    <p>Time presets are measured from the data as-of date, not from today.</p>
     <button type="button" class="sheet-close">Close</button>
   </section>
 
@@ -118,11 +125,11 @@
     <div class="sheet-handle"></div>
     <h2 id="layersTitle">Crime layers</h2>
     <div class="layer-actions">
-      <button type="button" id="layersAll">All on</button>
+      <button type="button" id="layersAll">Default on</button>
       <button type="button" id="layersNone">All off</button>
     </div>
     <ul id="layerList" class="layer-list"></ul>
-    <p class="drawer-note">Types marked “area only” never show a pin or address.</p>
+    <p class="drawer-note">Types marked “area only” are neighborhood totals — never a pin or address. Calls are 911/CAD events, not confirmed crimes, and start off.</p>
     <button type="button" class="sheet-close">Close</button>
   </section>
 
@@ -143,6 +150,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

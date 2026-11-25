@@ -20,10 +20,18 @@ Interactive map with a layer system. Each crime type is its own toggleable overl
 - Persistent bottom tab across every page: "Download our app" (links to iOS/Android).
 - Build status: in progress (Chris approved a 15-point CrimeStat cap, up to 90% weekly usage, on Nov 24, 2026).
 
+## Design principle (added Nov 24, 2026 11:40 PM, applies to every feature)
+- Keep the interface clean and uncluttered: no bulky, ugly or congested layouts.
+- Every feature must be easy to understand at a glance. Clarity beats density.
+- Use progressive disclosure: the default view shows only the essentials, and advanced options (layer lists, time presets, route-safe settings, alert radius, score details, near-miss form) sit behind a tap, drawer or menu.
+- The map stays the hero of the screen. Overlays, panels and banners stay small, collapsible and out of its way.
+- This applies to route-safe mode, safety scores, near-miss reports, saved-location alerts, and anything added later.
+
 ## Map behavior
 - On open: geolocate the user (with permission), snap to the nearest street address, and center the map there. Fallback if location is denied: address/ZIP search box.
 - Default view: crimes within a 5-mile radius of the user; user can zoom/pan out to see wider areas.
 - Layer control: pick any single crime type (or several) to filter the map.
+- Default layers on startup (updated Nov 24, 2026 11:36 PM): when the map first opens, before the user toggles anything, 16 layers load switched on: Burglary — residential, Burglary — business, Theft, Motor vehicle theft, Arson, Weapons violations, Home invasion, Assault, Rape / sexual assault (area totals only, no pins, as before), Battery, Robbery, Vandalism, Kidnapping, Fraud, Drug offenses, and Missing persons (pinned at the last-seen location; see placement rule below). The other 3 (Domestic violence, Stalking, Shots fired) start off until the user turns them on. Spec-only for now; goes live with the next build.
 - Time window: default last 6 months; presets 6 months, 1 year, up to 5 years.
 
 ## Crime-type layers (19)
@@ -51,7 +59,9 @@ Burglary is split (Nov 24, 2026) into two layers, each with its own toggle, colo
 
 ## Open questions / to research
 - Data sources: city/county open-data portals, FBI Crime Data Explorer (NIBRS), police CAD feeds, gunshot-detection feeds; licensing and coverage per area.
-- Privacy: sensitive types (rape, domestic violence, stalking, missing persons) usually published only at block/area level or not at all — must aggregate, never show victim addresses.
+- Missing persons pin placement (Nov 24, 2026 11:37 PM): this OVERRIDES the area-totals-only privacy rule for missing persons. Missing persons get individual pins so people can help narrow down the search area. Each missing-persons pin marks where the person was LAST SEEN, never their home address or any other location. Use the last-seen location exactly as the source (e.g. NamUs) publishes it; if only a city/county is given, place the pin at that city/county, not a guessed street address. Spec-only for now; goes live with the next build.
+- Missing persons pin expiration (Nov 24, 2026 11:38 PM): pins fade out gradually over time and then disappear. Default fade window is 30 days from the last-seen date for unresolved cases: the pin gets steadily more transparent across the 30 days and is removed at day 30, unless the source updates the case, in which case the window restarts from that update. If the source marks the case resolved, located or found, the pin is removed promptly, on the next data refresh, with no fade. Spec-only for now; goes live with the next build.
+- Privacy: sensitive types (rape, domestic violence, stalking; missing persons only as above) usually published only at block/area level or not at all — must aggregate, never show victim addresses.
 - Differentiators vs. LexisNexis/NeighborhoodScout: alerts for a saved address, trend charts, safety score, free tier.
 - Stack/hosting TBD (default: web on Vercel like other projects; mobile likely via Expo/React Native sharing code with the site).
 
@@ -75,3 +85,19 @@ Burglary is split (Nov 24, 2026) into two layers, each with its own toggle, colo
 
 ## Logo (FINAL, locked Nov 24, 2026 11:23 PM)
 File: brand/crimestat-logo.png (source: brand/crimestat-logo-v10-shaded-question.jpg). A gray question mark with its stem and round dot, wearing a black bandit mask across the top curve with white eye holes and a knot on the right. There's soft darker shading above the mask like a brow and a thin shadow under it along the cheeks. The gap inside the hook is filled with darker gray so the top reads as a head. No nose, mouth or neck. Plain white background, no red, no text. Used for the logo, app icon, favicon and all branding. No further changes unless Chris asks. Other versions are archived in brand/.
+
+## Spokane data status (Nov 24, 2026)
+- Spokane Police Department's public incident feed has been stale since about Sept 30 / October 2026, when SPD paused its public dashboard for a records-management-system (RMS) switch. Spokane data in CrimeStat is stale as of October 2026, pending the new RMS's public feed.
+- Spokane data covers May 1, 2026 through the feed's last update (about Sept 30 / October 2026), stale pending the new RMS's public feed. The exact range is recorded in data/spokane/README.md.
+- The default 6-month window (from Nov 24, 2026, back to about May 24, 2026) covers June through October. May 1–23 records show only with the 1-year preset or wider, and that window slides forward each day.
+- Spokane records are real public data, not demo data. They are labeled "Spokane Police Department public data, as of <date>" with source and as-of date shown, and kept separate from the demo set. Files are in data/spokane/.
+- Newport is about 45 miles from Spokane, outside the default 5-mile radius, so Spokane pins appear only when the map is centered on Spokane or zoomed out.
+
+## New features (added Nov 24, 2026 11:39 PM, spec-only; go live with the next build)
+1. Neighborhood safety score: a score per area (neighborhood, or grid cell where no neighborhood boundary exists) shown on the map, recalculated as new incidents come in. Built only from official/confirmed incident data, never from near-miss reports. Each score shows its data as-of date and the incidents behind it, and areas with too little data show "not enough data" instead of a score.
+2. Near-miss report button: users can report something that almost happened. Near-misses live on their own layer with a distinct look, are clearly labeled "Unverified near-miss — user report, not a confirmed crime," and never mix into crime layers, counts or safety scores. They need moderation and abuse controls (rate limits, a flag/report button, no personal names or exact home addresses in reports).
+3. Saved-locations alerts: users save any addresses they choose (home, work, a kid's school, etc.) and get a notification when a new incident is reported within a radius they set around any saved spot. Saved addresses stay private to the user and are never shown on the map or shared. Needs accounts plus an email/push sender, which the current site doesn't have yet.
+4. Route-safe mode (added 11:40 PM): user picks two points and the map highlights a route that avoids areas of high recent incident density (confirmed incidents only, recent window, weighted by recency and severity), shown next to the normal shortest route with the extra distance/time. Needs a routing engine (e.g. OSRM/GraphHopper/Valhalla on OpenStreetMap). Must carry a clear disclaimer: it reflects reported data only, isn't a guarantee of safety, and areas with no data aren't proof of safety.
+
+## Public records requests (Nov 24, 2026)
+Seven formal FOIA / Washington PRA request drafts are done (records-requests/, INDEX.md plus 01–07: FBI, WASPC, Spokane PD, Spokane County Sheriff, Spokane Valley PD, Newport PD, Pend Oreille Sheriff). None have been sent. They're waiting on Chris's mailing address, email, phone, date and a dollar fee cap.

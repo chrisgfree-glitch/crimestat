@@ -1,74 +1,61 @@
-/* CrimeStat v0 — demo map. Incidents are simulated and must stay labeled as such. */
+/* CrimeStat — official Spokane PD snapshot (no demo incidents). */
 (() => {
   const MILES5 = 1609.344 * 5;
-  const AREA_RADIUS = 804.672; // 0.5 mile
-  const GEN_RADIUS = 1609.344 * 20;
-  const STORAGE_KEY = "crimestat-ui-v1";
+  const STORAGE_KEY = "crimestat-ui-v2";
+  const OFF_BY_DEFAULT = new Set(["domestic_violence", "stalking", "shots_fired", "calls"]);
+  const START = Date.UTC(2026, 4, 1);
+  const AS_OF = Date.UTC(2026, 8, 27);
+  const WINDOW_DAYS = { "6m": 182, "1y": 365, "5y": 365 * 5 };
+  const SPOKANE_FALLBACK = { lat: 47.6588, lng: -117.426, label: "Spokane, Washington" };
 
-  const ICONS = {
-    house: '<path d="M2 12 L12 3 L22 12 V21 H15 V14 H9 V21 H2 Z"/>',
-    store: '<path d="M3 9 L5 4 H19 L21 9 V21 H14 V13 H10 V21 H3 Z M3 9 H21"/>',
-    bag: '<path d="M6 8 H18 L19 21 H5 Z M9 8 V7 A3 3 0 0 1 15 7 V8"/>',
-    door: '<path d="M6 21 V5 H18 V21 Z M14 13 A1 1 0 1 0 14 11 A1 1 0 0 0 14 13"/>',
-    person: '<path d="M12 11 A4 4 0 1 0 12 3 A4 4 0 0 0 12 11 Z M5 21 C5 16 8 14 12 14 C16 14 19 16 19 21 Z"/>',
-    alert: '<path d="M12 3 L22 20 H2 Z M12 9 V14 M12 17 A1 1 0 1 0 12 19 A1 1 0 0 0 12 17"/>',
-    spray: '<path d="M9 8 H15 V21 H9 Z M11 4 H14 V8 H11 Z M15 6 H18"/>',
-    flame: '<path d="M12 3 C16 8 18 11 18 15 A6 6 0 1 1 6 15 C6 11 9 8 12 3 Z"/>',
-    car: '<path d="M4 16 L6 10 H18 L20 16 V20 H18 V18 H6 V20 H4 Z M7 16 A1.5 1.5 0 1 0 7 13 A1.5 1.5 0 0 0 7 16 M17 16 A1.5 1.5 0 1 0 17 13 A1.5 1.5 0 0 0 17 16"/>',
-    card: '<path d="M3 7 H21 V18 H3 Z M3 11 H21"/>',
-    pill: '<path d="M8 8 A4 4 0 0 1 16 8 L16 16 A4 4 0 0 1 8 16 Z M8 12 H16"/>',
-    shield: '<path d="M12 3 L20 6 V12 C20 17 16 20 12 21 C8 20 4 17 4 12 V6 Z"/>',
-    burst: '<path d="M12 2 L14 10 L22 8 L16 14 L22 20 L14 16 L12 22 L10 16 L2 20 L8 14 L2 8 L10 10 Z"/>',
-    area: '<path d="M4 12 A8 8 0 1 0 20 12 A8 8 0 0 0 4 12 Z M8 12 A4 4 0 1 0 16 12 A4 4 0 0 0 8 12 Z"/>',
+  const LABELS = {
+    burglary_residential: "Burglary — residential",
+    burglary_business: "Burglary — business",
+    theft: "Theft",
+    home_invasion: "Home invasion",
+    assault: "Assault",
+    rape: "Rape / sexual assault",
+    battery: "Battery",
+    robbery: "Robbery",
+    vandalism: "Vandalism",
+    arson: "Arson",
+    auto_theft: "Motor vehicle theft",
+    kidnapping: "Kidnapping",
+    fraud: "Fraud",
+    drugs: "Drug offenses",
+    weapons: "Weapons violations",
+    domestic_violence: "Domestic violence",
+    stalking: "Stalking",
+    shots_fired: "Shots fired",
+    missing_persons: "Missing persons",
+    calls: "Calls (911/CAD), not confirmed crimes",
   };
-
-  const TYPES = [
-    { id: "burglary_residential", name: "Burglary — residential", color: "#c0392b", sensitive: false, icon: "house", weight: 12 },
-    { id: "burglary_business", name: "Burglary — business", color: "#8e44ad", sensitive: false, icon: "store", weight: 8 },
-    { id: "theft", name: "Theft", color: "#2980b9", sensitive: false, icon: "bag", weight: 16 },
-    { id: "home_invasion", name: "Home invasion", color: "#7b241c", sensitive: false, icon: "door", weight: 3 },
-    { id: "assault", name: "Assault", color: "#d35400", sensitive: false, icon: "person", weight: 8 },
-    { id: "rape", name: "Rape / sexual assault", color: "#6c3483", sensitive: true, icon: "area", weight: 2 },
-    { id: "battery", name: "Battery", color: "#e67e22", sensitive: false, icon: "person", weight: 7 },
-    { id: "robbery", name: "Robbery", color: "#1a5276", sensitive: false, icon: "alert", weight: 6 },
-    { id: "vandalism", name: "Vandalism", color: "#16a085", sensitive: false, icon: "spray", weight: 10 },
-    { id: "arson", name: "Arson", color: "#e74c3c", sensitive: false, icon: "flame", weight: 2 },
-    { id: "auto_theft", name: "Motor vehicle theft", color: "#2c3e50", sensitive: false, icon: "car", weight: 9 },
-    { id: "kidnapping", name: "Kidnapping", color: "#5d6d7e", sensitive: false, icon: "alert", weight: 1 },
-    { id: "fraud", name: "Fraud", color: "#b7950b", sensitive: false, icon: "card", weight: 7 },
-    { id: "drugs", name: "Drug offenses", color: "#27ae60", sensitive: false, icon: "pill", weight: 8 },
-    { id: "weapons", name: "Weapons violations", color: "#34495e", sensitive: false, icon: "shield", weight: 4 },
-    { id: "domestic_violence", name: "Domestic violence", color: "#a93226", sensitive: true, icon: "area", weight: 3 },
-    { id: "stalking", name: "Stalking", color: "#5b2c6f", sensitive: true, icon: "area", weight: 2 },
-    { id: "shots_fired", name: "Shots fired", color: "#cb4335", sensitive: false, icon: "burst", weight: 5 },
-    { id: "missing_persons", name: "Missing persons", color: "#2874a6", sensitive: true, icon: "area", weight: 2 },
-  ];
-
-  const TYPE_MAP = Object.fromEntries(TYPES.map((t) => [t.id, t]));
-  const WINDOWS = { "6m": 182 * 864e5, "1y": 365 * 864e5, "5y": 5 * 365 * 864e5 };
+  const SENSITIVE = new Set(["rape", "domestic_violence", "stalking"]);
 
   const state = {
-    time: "6m",
+    time: "snapshot",
     view: "pins",
-    layers: Object.fromEntries(TYPES.map((t) => [t.id, true])),
+    layers: {},
+    types: [],
+    meta: null,
+    neighborhoods: null,
+    offenses: null,
+    calls: null,
+    callsLoading: false,
+    svg: {},
     center: null,
-    points: [],
-    areas: [],
+    inCoverage: false,
   };
 
-  let map, overlay, heatLayer, radiusCircle, userMarker;
+  let map, pinLayer, areaLayer, heatLayer, radiusCircle, userMarker, nbhLayer, callsLayer;
 
   function loadState() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
       if (!raw) return;
-      if (WINDOWS[raw.time]) state.time = raw.time;
+      if (raw.time === "snapshot" || WINDOW_DAYS[raw.time]) state.time = raw.time;
       if (raw.view === "heat" || raw.view === "pins") state.view = raw.view;
-      if (raw.layers && typeof raw.layers === "object") {
-        for (const t of TYPES) {
-          if (typeof raw.layers[t.id] === "boolean") state.layers[t.id] = raw.layers[t.id];
-        }
-      }
+      if (raw.layers && typeof raw.layers === "object") state.layers = { ...raw.layers };
     } catch (_) { /* ignore */ }
   }
 
@@ -80,141 +67,190 @@
     }));
   }
 
-  function mulberry32(a) {
-    return function rand() {
-      let t = (a += 0x6d2b79f5);
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  function inWindow(day) {
+    if (state.time === "snapshot") return true;
+    const ms = START + day * 864e5;
+    return AS_OF - ms <= WINDOW_DAYS[state.time] * 864e5;
   }
 
-  function hashLoc(lat, lng) {
-    const la = Math.round(lat * 200);
-    const ln = Math.round(lng * 200);
-    return ((la * 73856093) ^ (ln * 19349663)) >>> 0;
+  function formatDay(day) {
+    const dt = new Date(START + day * 864e5);
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
   }
 
-  function offset(lat, lng, eastM, northM) {
-    const dLat = northM / 111320;
-    const dLng = eastM / (111320 * Math.cos((lat * Math.PI) / 180));
-    return [lat + dLat, lng + dLng];
-  }
-
-  function pickWeighted(rand) {
-    const total = TYPES.reduce((s, t) => s + t.weight, 0);
-    let r = rand() * total;
-    for (const t of TYPES) {
-      r -= t.weight;
-      if (r <= 0) return t;
+  function applyDefaultLayers() {
+    for (const t of state.types) {
+      if (typeof state.layers[t] !== "boolean") state.layers[t] = !OFF_BY_DEFAULT.has(t);
     }
-    return TYPES[0];
+    if (typeof state.layers.calls !== "boolean") state.layers.calls = false;
   }
 
-  function formatMonth(ts) {
-    return new Date(ts).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  function coverageBounds() {
+    const b = state.meta && state.meta.bbox;
+    if (!b) return null;
+    return L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
   }
 
-  function generateDemo(lat, lng) {
-    const rand = mulberry32(hashLoc(lat, lng) || 1);
-    const now = Date.now();
-    const points = [];
-    const areaBuckets = new Map();
-
-    const pointCount = 90 + Math.floor(rand() * 40);
-    for (let i = 0; i < pointCount; i++) {
-      const type = pickWeighted(rand);
-      const ang = rand() * Math.PI * 2;
-      const dist = Math.sqrt(rand()) * GEN_RADIUS;
-      const [plat, plng] = offset(lat, lng, Math.cos(ang) * dist, Math.sin(ang) * dist);
-      // Bias toward more recent dates
-      const age = Math.pow(rand(), 1.6) * WINDOWS["5y"];
-      const ts = now - age;
-
-      if (type.sensitive) {
-        const keyLat = Math.round(plat * 50) / 50;
-        const keyLng = Math.round(plng * 50) / 50;
-        const key = `${type.id}|${keyLat}|${keyLng}`;
-        if (!areaBuckets.has(key)) {
-          areaBuckets.set(key, { typeId: type.id, lat: keyLat, lng: keyLng, dates: [] });
-        }
-        areaBuckets.get(key).dates.push(ts);
-      } else {
-        points.push({ typeId: type.id, lat: plat, lng: plng, ts });
-      }
-    }
-
-    return { points, areas: [...areaBuckets.values()] };
+  function viewIntersectsCoverage() {
+    const cov = coverageBounds();
+    if (!cov || !state.center) return false;
+    const circle = L.circle([state.center.lat, state.center.lng], { radius: MILES5 }).getBounds();
+    return cov.intersects(circle) || cov.contains([state.center.lat, state.center.lng]);
   }
 
-  function inWindow(ts) {
-    return Date.now() - ts <= WINDOWS[state.time];
+  function setLocMessage(text) {
+    document.getElementById("locBar").textContent = text;
   }
 
-  function popupHtml(title, body) {
-    return `<div class="popup-demo">Demo data — not a real report</div><strong>${title}</strong><div>${body}</div>`;
+  function popupHtml(title, body, note) {
+    return `<strong>${title}</strong><div>${body}</div>${note ? `<div class="popup-note">${note}</div>` : ""}`;
+  }
+
+  const AREA_NOTE = "Shown as a neighborhood total only. Street addresses are not published on CrimeStat.";
+  const PIN_NOTE = "Location is the neighborhood only, not a street address. Official data includes no point geometry.";
+
+  function iconFor(type) {
+    const svg = state.svg[type];
+    if (!svg) return undefined;
+    return L.divIcon({
+      className: "cs-ico",
+      html: svg,
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+      popupAnchor: [0, -12],
+    });
   }
 
   function render() {
-    if (overlay) overlay.clearLayers();
+    if (pinLayer) pinLayer.clearLayers();
+    if (areaLayer) areaLayer.clearLayers();
+    if (callsLayer) callsLayer.clearLayers();
     if (heatLayer) {
       map.removeLayer(heatLayer);
       heatLayer = null;
     }
 
-    const points = state.points.filter((p) => state.layers[p.typeId] && inWindow(p.ts));
-    const areas = state.areas
-      .map((a) => ({ ...a, count: a.dates.filter(inWindow).length }))
-      .filter((a) => state.layers[a.typeId] && a.count > 0);
+    const covered = viewIntersectsCoverage();
+    state.inCoverage = covered;
+    document.getElementById("emptyState").hidden = covered;
+    if (!covered || !state.offenses || !state.neighborhoods) return;
 
-    if (state.view === "heat") {
-      const heat = points.map((p) => [p.lat, p.lng, 0.65]);
-      if (heat.length) {
-        heatLayer = L.heatLayer(heat, { radius: 28, blur: 22, maxZoom: 16, minOpacity: 0.35 });
-        heatLayer.addTo(map);
+    const heat = [];
+    const nbhArea = new Map(); // id -> [{type, count}]
+    const features = state.neighborhoods.features || [];
+
+    for (const row of state.offenses.areas) {
+      const [t, n, d, c] = row;
+      const type = state.types[t];
+      if (!type || !state.layers[type] || !inWindow(d)) continue;
+      if (!nbhArea.has(n)) nbhArea.set(n, {});
+      nbhArea.get(n)[type] = (nbhArea.get(n)[type] || 0) + c;
+    }
+
+    if (state.layers.calls && state.calls) {
+      const callCounts = new Map();
+      for (const [n, d, c] of state.calls.cells) {
+        if (!inWindow(d)) continue;
+        callCounts.set(n, (callCounts.get(n) || 0) + c);
       }
-    } else {
-      for (const p of points) {
-        const t = TYPE_MAP[p.typeId];
-        const icon = L.divIcon({
-          className: "cs-pin",
-          html: `<span style="background:${t.color}"></span>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
-        });
-        L.marker([p.lat, p.lng], { icon, title: t.name })
-          .bindPopup(popupHtml(t.name, `Approximate area only<br>${formatMonth(p.ts)}`))
-          .addTo(overlay);
+      for (const feat of features) {
+        const id = feat.properties.id;
+        const count = callCounts.get(id);
+        if (!count) continue;
+        const color = "#5d6d7e";
+        L.geoJSON(feat, {
+          style: {
+            color, weight: 1.2, fillColor: color, fillOpacity: 0.18,
+          },
+        })
+          .bindPopup(popupHtml(
+            "Calls (911/CAD), not confirmed crimes",
+            `<strong>${count.toLocaleString()}</strong> calls in ${feat.properties.name} during the selected window.`,
+            "This is the official calls-for-service feed (911, Crime Check, officer-initiated, dispatch). It is not a confirmed crime layer."
+          ))
+          .addTo(callsLayer);
       }
     }
 
-    for (const a of areas) {
-      const t = TYPE_MAP[a.typeId];
-      L.circle([a.lat, a.lng], {
-        radius: AREA_RADIUS,
-        color: t.color,
-        weight: 1.5,
-        fillColor: t.color,
-        fillOpacity: 0.22,
-      })
-        .bindPopup(
-          popupHtml(
-            t.name,
-            `${a.count} report${a.count === 1 ? "" : "s"} in this area during the selected time window.<br>Shown as an area total only — never a specific address.`
-          )
-        )
-        .addTo(overlay);
+    for (const feat of features) {
+      const id = feat.properties.id;
+      const bag = nbhArea.get(id);
+      if (!bag) continue;
+      const types = Object.keys(bag);
+      const color = "#5b2c6f";
+      // Use the first visible sensitive color; stack opacity
+      types.forEach((type, i) => {
+        L.geoJSON(feat, {
+          style: {
+            color: "#111827",
+            weight: 1,
+            fillColor: typeColor(type),
+            fillOpacity: 0.22 + Math.min(i, 2) * 0.06,
+          },
+        })
+          .bindPopup(popupHtml(
+            feat.properties.name,
+            types.map((t) => `${LABELS[t]}: ${bag[t]}`).join("<br>"),
+            AREA_NOTE
+          ))
+          .addTo(areaLayer);
+      });
+    }
+
+    if (state.view === "heat") {
+      for (const row of state.offenses.points) {
+        const [t, n, d, x, y] = row;
+        const type = state.types[t];
+        if (!type || !state.layers[type] || !inWindow(d)) continue;
+        heat.push([y / 10000, x / 10000, 0.6]);
+      }
+      if (heat.length) {
+        heatLayer = L.heatLayer(heat, { radius: 28, blur: 22, maxZoom: 16, minOpacity: 0.28 });
+        heatLayer.addTo(map);
+      }
+    } else {
+      for (const row of state.offenses.points) {
+        const [t, n, d, x, y] = row;
+        const type = state.types[t];
+        if (!type || !state.layers[type] || !inWindow(d)) continue;
+        const feat = features[n];
+        const name = feat ? feat.properties.name : "Unknown neighborhood";
+        const icon = iconFor(type);
+        const marker = L.marker([y / 10000, x / 10000], {
+          icon,
+          title: LABELS[type],
+          keyboard: false,
+        }).bindPopup(popupHtml(
+          LABELS[type],
+          `${name}<br>${formatDay(d)}`,
+          PIN_NOTE
+        ));
+        pinLayer.addLayer(marker);
+      }
+    }
+  }
+
+  function typeColor(type) {
+    const svg = state.svg[type] || "";
+    const m = svg.match(/fill="(#[0-9a-fA-F]{3,8})"/);
+    return (m && m[1]) || "#374151";
+  }
+
+  async function ensureCalls() {
+    if (state.calls || state.callsLoading) return;
+    state.callsLoading = true;
+    try {
+      const res = await fetch("/data/calls.json");
+      state.calls = await res.json();
+    } catch (_) {
+      state.calls = { cells: [] };
+    } finally {
+      state.callsLoading = false;
     }
   }
 
   function setCenter(lat, lng, label) {
     state.center = { lat, lng, label };
-    state.points = [];
-    state.areas = [];
-    const demo = generateDemo(lat, lng);
-    state.points = demo.points;
-    state.areas = demo.areas;
-
     if (radiusCircle) map.removeLayer(radiusCircle);
     radiusCircle = L.circle([lat, lng], {
       radius: MILES5,
@@ -225,7 +261,6 @@
       fillOpacity: 0.05,
       interactive: false,
     }).addTo(map);
-
     if (userMarker) map.removeLayer(userMarker);
     userMarker = L.circleMarker([lat, lng], {
       radius: 7,
@@ -234,12 +269,25 @@
       fillColor: "#2563eb",
       fillOpacity: 1,
     }).addTo(map);
-
     map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 14 });
-    document.getElementById("locBar").textContent = label
-      ? `Centered near ${label} · default view is a 5-mile radius (zoom out to see more). Demo data only.`
-      : "Centered on this location · default view is a 5-mile radius (zoom out to see more). Demo data only.";
+    const covered = viewIntersectsCoverage();
+    if (covered) {
+      setLocMessage((label ? `Centered near ${label}` : "Centered here") +
+        " · default view is a 5-mile radius (zoom out to see more). Neighborhood-level official data only.");
+    } else {
+      setLocMessage((label ? `Centered near ${label}. ` : "") +
+        "No public data feed for this area yet.");
+    }
     render();
+  }
+
+  function showSpokane() {
+    const cov = coverageBounds();
+    const c = state.meta && state.meta.center;
+    const lng = c ? c[0] : SPOKANE_FALLBACK.lng;
+    const lat = c ? c[1] : SPOKANE_FALLBACK.lat;
+    setCenter(lat, lng, "Spokane, Washington");
+    if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13 });
   }
 
   function formatAddress(result) {
@@ -264,10 +312,6 @@
     const res = await fetch(url);
     if (!res.ok) throw new Error("lookup failed");
     return res.json();
-  }
-
-  function setLocMessage(text) {
-    document.getElementById("locBar").textContent = text;
   }
 
   async function useCoords(lat, lng, fallbackLabel) {
@@ -295,9 +339,9 @@
       (pos) => useCoords(pos.coords.latitude, pos.coords.longitude),
       (err) => {
         if (err && err.code === 1) {
-          setLocMessage("Location is off. Search an address or ZIP to center the map.");
+          setLocMessage("Location is off. Search an address or ZIP, or view Spokane.");
         } else {
-          setLocMessage("Couldn’t get your location. Search an address or ZIP instead.");
+          setLocMessage("Couldn’t get your location. Search an address or ZIP, or view Spokane.");
         }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
@@ -306,11 +350,15 @@
 
   function buildLayerList() {
     const list = document.getElementById("layerList");
-    list.innerHTML = TYPES.map((t) => {
-      const svg = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[t.icon] || ICONS.area}</svg>`;
-      const meta = t.sensitive ? '<span class="meta">Area only</span>' : "";
-      return `<li><label><span class="swatch" style="background:${t.color}">${svg}</span><input type="checkbox" data-layer="${t.id}" ${state.layers[t.id] ? "checked" : ""}> <span>${t.name}</span>${meta}</label></li>`;
-    }).join("");
+    const items = state.types.map((t) => {
+      const svg = state.svg[t] || "";
+      const meta = SENSITIVE.has(t) ? '<span class="meta">Area only</span>' : "";
+      const empty = (t === "home_invasion" || t === "missing_persons")
+        ? '<span class="meta">None in snapshot</span>' : "";
+      return `<li><label><span class="layer-icon">${svg}</span><input type="checkbox" data-layer="${t}" ${state.layers[t] ? "checked" : ""}> <span>${LABELS[t]}</span>${meta}${empty}</label></li>`;
+    });
+    items.push(`<li><label><span class="layer-icon">${state.svg.calls || ""}</span><input type="checkbox" data-layer="calls" ${state.layers.calls ? "checked" : ""}> <span>${LABELS.calls}</span><span class="meta">Starts off</span></label></li>`);
+    list.innerHTML = items.join("");
   }
 
   function syncControls() {
@@ -356,8 +404,30 @@
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
-    overlay = L.layerGroup().addTo(map);
+    nbhLayer = L.geoJSON(null, {
+      style: { color: "#94a3b8", weight: 1, fillColor: "#cbd5e1", fillOpacity: 0.08 },
+      interactive: false,
+    }).addTo(map);
+    areaLayer = L.layerGroup().addTo(map);
+    callsLayer = L.layerGroup().addTo(map);
+    pinLayer = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 48,
+      disableClusteringAtZoom: 16,
+      spiderfyOnMaxZoom: true,
+    }).addTo(map);
     map.setView([39.8283, -98.5795], 4);
+    map.on("moveend", () => {
+      // keep empty-state accurate if the user pans into/out of Spokane
+      if (!state.center) return;
+      const covered = viewIntersectsCoverage() || (coverageBounds() && map.getBounds().intersects(coverageBounds()));
+      // If they panned to Spokane without recentering, still show data
+      if (covered && !state.inCoverage) {
+        state.inCoverage = true;
+        document.getElementById("emptyState").hidden = true;
+        render();
+      }
+    });
   }
 
   function initEvents() {
@@ -377,18 +447,7 @@
       e.preventDefault();
       const q = document.getElementById("searchInput").value.trim();
       if (!q) return;
-      setLocMessage("Looking up that address…");
-      try {
-        const results = await searchAddress(q);
-        const hit = Array.isArray(results) ? results[0] : null;
-        if (!hit) {
-          setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
-          return;
-        }
-        setCenter(Number(hit.lat), Number(hit.lon), formatAddress(hit) || hit.display_name);
-      } catch (_) {
-        setLocMessage("Address lookup failed. Wait a moment and try again.");
-      }
+      await runSearch(q);
     });
 
     document.querySelectorAll("[data-time]").forEach((btn) => {
@@ -409,33 +468,39 @@
     });
     document.getElementById("layersBtn").addEventListener("click", () => openSheet("layers"));
     document.getElementById("locateBtn").addEventListener("click", locateUser);
-    document.getElementById("settingsLocate").addEventListener("click", () => {
-      closeAll();
-      locateUser();
-    });
-    document.getElementById("layerList").addEventListener("change", (e) => {
+    document.getElementById("settingsLocate").addEventListener("click", () => { closeAll(); locateUser(); });
+    document.getElementById("settingsSpokane").addEventListener("click", () => { closeAll(); showSpokane(); });
+    document.getElementById("jumpSpokane").addEventListener("click", showSpokane);
+
+    document.getElementById("layerList").addEventListener("change", async (e) => {
       const box = e.target.closest("[data-layer]");
       if (!box) return;
       state.layers[box.dataset.layer] = box.checked;
       saveState();
+      if (box.dataset.layer === "calls" && box.checked) {
+        await ensureCalls();
+      }
       render();
     });
     document.getElementById("layersAll").addEventListener("click", () => {
-      for (const t of TYPES) state.layers[t.id] = true;
+      for (const t of state.types) state.layers[t] = !OFF_BY_DEFAULT.has(t);
+      state.layers.calls = false;
       saveState();
       syncControls();
       render();
     });
     document.getElementById("layersNone").addEventListener("click", () => {
-      for (const t of TYPES) state.layers[t.id] = false;
+      for (const t of state.types) state.layers[t] = false;
+      state.layers.calls = false;
       saveState();
       syncControls();
       render();
     });
     document.getElementById("resetFilters").addEventListener("click", () => {
-      state.time = "6m";
+      state.time = "snapshot";
       state.view = "pins";
-      for (const t of TYPES) state.layers[t.id] = true;
+      for (const t of state.types) state.layers[t] = !OFF_BY_DEFAULT.has(t);
+      state.layers.calls = false;
       saveState();
       syncControls();
       render();
@@ -452,10 +517,72 @@
     });
   }
 
-  loadState();
-  initMap();
-  buildLayerList();
-  syncControls();
-  initEvents();
-  locateUser();
+  async function runSearch(q) {
+    setLocMessage("Looking up that address…");
+    try {
+      const results = await searchAddress(q);
+      const hit = Array.isArray(results) ? results[0] : null;
+      if (!hit && /spokane/i.test(q)) {
+        showSpokane();
+        return;
+      }
+      if (!hit) {
+        setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
+        return;
+      }
+      setCenter(Number(hit.lat), Number(hit.lon), formatAddress(hit) || hit.display_name);
+    } catch (_) {
+      if (/spokane/i.test(q)) showSpokane();
+      else setLocMessage("Address lookup failed. Wait a moment and try again.");
+    }
+  }
+
+  async function loadSvg(name) {
+    const res = await fetch(`/icons/layers/${name}.svg`);
+    if (!res.ok) return "";
+    return res.text();
+  }
+
+  async function boot() {
+    loadState();
+    initMap();
+    initEvents();
+
+    const [meta, neighborhoods, offenses] = await Promise.all([
+      fetch("/data/meta.json").then((r) => r.json()),
+      fetch("/data/neighborhoods.json").then((r) => r.json()),
+      fetch("/data/offenses.json").then((r) => r.json()),
+    ]);
+    state.meta = meta;
+    state.neighborhoods = neighborhoods;
+    state.offenses = offenses;
+    state.types = meta.types || [];
+    applyDefaultLayers();
+
+    const iconNames = state.types.concat(["calls"]);
+    const svgs = await Promise.all(iconNames.map(loadSvg));
+    iconNames.forEach((name, i) => { state.svg[name] = svgs[i]; });
+
+    document.getElementById("asOfBanner").textContent = meta.label;
+    document.getElementById("settingsAbout").textContent =
+      `${meta.label} Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat. ${meta.defaultWindowNote || ""}`;
+
+    if (neighborhoods) nbhLayer.addData(neighborhoods);
+    buildLayerList();
+    syncControls();
+
+    const params = new URLSearchParams(location.search);
+    const q = (params.get("q") || params.get("city") || "").trim();
+    if (q) {
+      document.getElementById("searchInput").value = q;
+      await runSearch(q);
+    } else {
+      locateUser();
+    }
+  }
+
+  boot().catch((err) => {
+    console.error(err);
+    document.getElementById("asOfBanner").textContent = "Could not load CrimeStat data.";
+  });
 })();
