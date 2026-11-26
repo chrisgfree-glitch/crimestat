@@ -1,0 +1,68 @@
+{
+  "city": "SeaTac",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 361,
+  "layerCounts": {
+    "burglary_residential": 4,
+    "burglary_business": 0,
+    "theft": 80,
+    "home_invasion": 0,
+    "assault": 56,
+    "rape": 2,
+    "battery": 0,
+    "robbery": 7,
+    "vandalism": 34,
+    "arson": 0,
+    "auto_theft": 42,
+    "kidnapping": 1,
+    "fraud": 6,
+    "drugs": 9,
+    "weapons": 6,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 247,
+  "dropped": {
+    "no_matching_layer": 48,
+    "arrest_only_or_society": 66
+  },
+  "droppedSum": 114,
+  "pointsOnMap": 245,
+  "areaCells": 2,
+  "areaIncidentSum": 2,
+  "missingOfficialPoint": 0,
+  "codeMapped": {
+    "100|kidnapping": 1,
+    "23G|theft": 21,
+    "13A|assault": 5,
+    "240|auto_theft": 42,
+    "13B|assault": 51,
+    "23H|theft": 15,
+    "520|weapons": 6,
+    "35A|drugs": 8,
+    "23C|theft": 7,
+    "290|vandalism": 34,
+    "26F|fraud": 2,
+    "23D|theft": 4,
+    "23A|theft": 1,
+    "26A|fraud": 3,
+    "23F|theft": 32,
+    "11A|rape": 2,
+    "220|burglary_residential": 4,
+    "120|robbery": 7,
+    "35B|drugs": 1,
+    "26E|fraud": 1
+  },
+  "bytes": {
+    "meta": 1495,
+    "neighborhoods": 3385,
+    "offenses": 6208
+  }
+}

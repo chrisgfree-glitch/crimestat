@@ -1,0 +1,63 @@
+{
+  "city": "Sammamish",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 109,
+  "layerCounts": {
+    "burglary_residential": 1,
+    "burglary_business": 0,
+    "theft": 40,
+    "home_invasion": 0,
+    "assault": 15,
+    "rape": 0,
+    "battery": 0,
+    "robbery": 0,
+    "vandalism": 8,
+    "arson": 0,
+    "auto_theft": 0,
+    "kidnapping": 0,
+    "fraud": 18,
+    "drugs": 0,
+    "weapons": 1,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 83,
+  "dropped": {
+    "arrest_only_or_society": 17,
+    "no_matching_layer": 9
+  },
+  "droppedSum": 26,
+  "pointsOnMap": 83,
+  "areaCells": 0,
+  "areaIncidentSum": 0,
+  "missingOfficialPoint": 0,
+  "codeMapped": {
+    "250|fraud": 1,
+    "23D|theft": 1,
+    "23H|theft": 15,
+    "13B|assault": 13,
+    "23G|theft": 6,
+    "26A|fraud": 11,
+    "13A|assault": 2,
+    "26F|fraud": 4,
+    "23F|theft": 8,
+    "23C|theft": 10,
+    "290|vandalism": 8,
+    "26B|fraud": 1,
+    "26C|fraud": 1,
+    "220|burglary_residential": 1,
+    "520|weapons": 1
+  },
+  "bytes": {
+    "meta": 1504,
+    "neighborhoods": 5222,
+    "offenses": 2105
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "city": "Maple Valley",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 156,
+  "layerCounts": {
+    "burglary_residential": 2,
+    "burglary_business": 0,
+    "theft": 49,
+    "home_invasion": 0,
+    "assault": 14,
+    "rape": 1,
+    "battery": 0,
+    "robbery": 1,
+    "vandalism": 19,
+    "arson": 0,
+    "auto_theft": 7,
+    "kidnapping": 0,
+    "fraud": 13,
+    "drugs": 0,
+    "weapons": 1,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 107,
+  "dropped": {
+    "no_matching_layer": 21,
+    "arrest_only_or_society": 21,
+    "point_outside_city_margin": 7
+  },
+  "droppedSum": 49,
+  "pointsOnMap": 106,
+  "areaCells": 1,
+  "areaIncidentSum": 1,
+  "missingOfficialPoint": 7,
+  "codeMapped": {
+    "23H|theft": 13,
+    "290|vandalism": 19,
+    "23F|theft": 7,
+    "240|auto_theft": 9,
+    "220|burglary_residential": 2,
+    "23C|theft": 23,
+    "23G|theft": 6,
+    "13B|assault": 14,
+    "26F|fraud": 6,
+    "26A|fraud": 6,
+    "120|robbery": 1,
+    "520|weapons": 2,
+    "11D|rape": 1,
+    "23D|theft": 1,
+    "26E|fraud": 1,
+    "13A|assault": 2,
+    "26B|fraud": 1
+  },
+  "bytes": {
+    "meta": 1514,
+    "neighborhoods": 3536,
+    "offenses": 2687
+  }
+}

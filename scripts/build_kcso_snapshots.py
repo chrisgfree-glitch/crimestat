@@ -3,8 +3,13 @@
 
 Incident rows come from data.kingcounty.gov 4kmt-kfqf (100-block text, no stored
 addresses in the output). Official approximate point geometry is joined from
-King County's public crime-mapping FeatureServer, the same program used on
-KCSO city dashboards. Credit: data provided by permission of King County.
+King County's public PublicCrimeMappingData FeatureServer layer 1 (the same
+program used on KCSO city dashboards). Credit: data provided by permission of
+King County.
+
+Builds remaining contract-city snapshots plus a residual King County Sheriff
+layer for unincorporated places and sheriff cases in other cities. Does not
+rebuild Shoreline or Kenmore (already published).
 """
 from __future__ import annotations
 
@@ -31,16 +36,28 @@ START = "2026-08-27"
 AS_OF = "2026-11-24"
 END = "2026-11-24"
 WHERE = (
-    "upper(city) in ('SHORELINE','KENMORE') "
-    "and incident_datetime >= '2026-08-27T00:00:00' "
+    "incident_datetime >= '2026-08-27T00:00:00' "
     "and incident_datetime < '2026-11-25T00:00:00'"
 )
 CREDIT = "data provided by permission of King County"
+MAP_LAYER = 1
+ALREADY_PUBLISHED = {"shoreline", "kenmore"}
 
+# Remaining KCSO contract cities (Shoreline and Kenmore already live).
 CITIES = {
-    "shoreline": {"name": "Shoreline", "key": "SHORELINE", "map_layer": 2, "bbox_pad": (47.69, 47.80, -122.40, -122.25)},
-    "kenmore": {"name": "Kenmore", "key": "KENMORE", "map_layer": 1, "bbox_pad": (47.70, 47.80, -122.28, -122.18)},
+    "burien": {"name": "Burien", "key": "BURIEN"},
+    "seatac": {"name": "SeaTac", "key": "SEATAC"},
+    "covington": {"name": "Covington", "key": "COVINGTON"},
+    "maplevalley": {"name": "Maple Valley", "key": "MAPLE VALLEY"},
+    "woodinville": {"name": "Woodinville", "key": "WOODINVILLE"},
+    "sammamish": {"name": "Sammamish", "key": "SAMMAMISH"},
+    "northbend": {"name": "North Bend", "key": "NORTH BEND"},
+    "newcastle": {"name": "Newcastle", "key": "NEWCASTLE"},
+    "carnation": {"name": "Carnation", "key": "CARNATION"},
+    "skykomish": {"name": "Skykomish", "key": "SKYKOMISH"},
 }
+# Official contract-city keys already published or built in this run.
+CONTRACT_KEYS = {cfg["key"] for cfg in CITIES.values()} | {"SHORELINE", "KENMORE"}
 
 TYPES = [
     "burglary_residential",
@@ -163,7 +180,7 @@ def simplify_geom(geom, tol=0.00025):
 
 def load_offense_rows():
     RAW.mkdir(parents=True, exist_ok=True)
-    cached = RAW / "offenses-90d.json"
+    cached = RAW / "offenses-90d-all.json"
     if cached.exists():
         rows = json.loads(cached.read_text())
         print("loaded offense cache", len(rows))
@@ -192,32 +209,31 @@ def load_offense_rows():
     return rows
 
 
-def load_points(layer: int, city_key: str):
+def load_all_points():
     RAW.mkdir(parents=True, exist_ok=True)
-    cached = RAW / f"points-{city_key.lower()}.json"
-    if cached.exists():
+    cached = RAW / "points-all-90d.json"
+    if cached.exists() and cached.stat().st_size > 1000:
         pts = json.loads(cached.read_text())
-        print("loaded points cache", city_key, len(pts))
+        print("loaded points cache all", len(pts))
         return pts
     pts = {}
     offset = 0
-    page_size = 2000
+    page_size = 1000
     where = (
-        f"UPPER(city)='{city_key}' "
-        f"AND incident_datetime >= timestamp '2026-08-27 00:00:00' "
-        f"AND incident_datetime < timestamp '2026-11-25 00:00:00'"
+        "incident_datetime >= timestamp '2026-08-27 00:00:00' "
+        "AND incident_datetime < timestamp '2026-11-25 00:00:00'"
     )
     while True:
         q = urllib.parse.urlencode({
             "where": where,
-            "outFields": "case_number,latitude,longitude",
+            "outFields": "case_number,latitude,longitude,city",
             "returnGeometry": "true",
             "outSR": "4326",
             "resultOffset": str(offset),
             "resultRecordCount": str(page_size),
             "f": "json",
         })
-        data = fetch_json(f"{MAP_SVC}/{layer}/query?{q}")
+        data = fetch_json(f"{MAP_SVC}/{MAP_LAYER}/query?{q}")
         if data.get("error"):
             raise SystemExit(f"map query failed: {data['error']}")
         feats = data.get("features") or []
@@ -235,10 +251,12 @@ def load_points(layer: int, city_key: str):
                 lon = lat = None
             if case and lon is not None and lat is not None and math.isfinite(lon) and math.isfinite(lat):
                 pts[case] = [lon, lat]
-        print("fetched points", city_key, len(feats), "unique", len(pts))
+        print("fetched points all", len(feats), "unique", len(pts), "offset", offset)
         if len(feats) < page_size:
             break
         offset += page_size
+        if data.get("exceededTransferLimit") is False and len(feats) == 0:
+            break
     cached.write_text(json.dumps(pts, separators=(",", ":")))
     return pts
 
@@ -278,7 +296,12 @@ def build_city(city_id: str, rows, points):
     area_rows = collections.Counter()
     missing_geom = 0
 
-    min_lat, max_lat, min_lon, max_lon = cfg["bbox_pad"]
+    minx, miny, maxx, maxy = geom.bounds
+    pad = 0.03
+    min_lat, max_lat = miny - pad, maxy + pad
+    min_lon, max_lon = minx - pad, maxx + pad
+    if cfg.get("bbox_pad"):
+        min_lat, max_lat, min_lon, max_lon = cfg["bbox_pad"]
     for r in city_rows:
         typ, reason = classify(r.get("nibrs_code") or "")
         code = nibrs_code(r.get("nibrs_code") or "")
@@ -393,11 +416,153 @@ def build_city(city_id: str, rows, points):
     return report
 
 
+def build_residual(rows, points):
+    """Sheriff cases not already published as a contract-city snapshot."""
+    from shapely.geometry import MultiPoint, Point
+
+    city_id = "kcsoother"
+    out = SITE / "data" / city_id
+    residual = [r for r in rows if (r.get("city") or "").strip().upper() not in CONTRACT_KEYS]
+    pts_used = []
+    layer_counts = collections.Counter()
+    drop_counts = collections.Counter()
+    code_mapped = collections.Counter()
+    points_out = []
+    area_rows = collections.Counter()
+    missing_geom = 0
+    # King County broad margin
+    min_lat, max_lat, min_lon, max_lon = 47.05, 47.92, -122.65, -121.05
+
+    for r in residual:
+        typ, reason = classify(r.get("nibrs_code") or "")
+        code = nibrs_code(r.get("nibrs_code") or "")
+        if typ is None:
+            drop_counts[reason] += 1
+            continue
+        d = day_offset(r.get("incident_datetime") or "")
+        if d is None or d < 0 or d > 89:
+            drop_counts["missing_or_out_of_window_date"] += 1
+            continue
+        layer_counts[typ] += 1
+        code_mapped[f"{code}|{typ}"] += 1
+        if typ in SENSITIVE:
+            area_rows[(TYPE_I[typ], 0, d)] += 1
+            continue
+        case = (r.get("case_number") or "").strip()
+        pt = points.get(case)
+        if not pt:
+            missing_geom += 1
+            drop_counts["no_official_point"] += 1
+            layer_counts[typ] -= 1
+            continue
+        lon, lat = pt
+        if not (min_lat <= lat <= max_lat and min_lon <= lon <= max_lon):
+            missing_geom += 1
+            drop_counts["point_outside_county_margin"] += 1
+            layer_counts[typ] -= 1
+            continue
+        points_out.append([
+            TYPE_I[typ],
+            0,
+            d,
+            int(round(lon * 10000)),
+            int(round(lat * 10000)),
+        ])
+        pts_used.append((lon, lat))
+
+    if pts_used:
+        geom = MultiPoint([Point(x, y) for x, y in pts_used]).convex_hull.buffer(0.01)
+    else:
+        geom = Point(-122.0, 47.5).buffer(0.2)
+    geom = simplify_geom(geom, tol=0.0005)
+    c = geom.representative_point()
+    minx, miny, maxx, maxy = geom.bounds
+    bbox = [round(minx, 5), round(miny, 5), round(maxx, 5), round(maxy, 5)]
+    center = [round((minx + maxx) / 2, 5), round((miny + maxy) / 2, 5)]
+    areas = [[t, n, d, c] for (t, n, d), c in sorted(area_rows.items())]
+    label = "King County Sheriff (other areas)"
+    meta = {
+        "id": city_id,
+        "label": (
+            f"King County Sheriff’s Office offense reports for unincorporated King County "
+            f"and sheriff cases in other cities, as of {AS_OF}. 90-day snapshot {START} to {END}. "
+            f"Not a real-time feed. These are not independent city-police-department cases. {CREDIT}."
+        ),
+        "source": CREDIT,
+        "credit": CREDIT,
+        "asOf": AS_OF,
+        "start": START,
+        "end": END,
+        "timeBase": "asOf",
+        "defaultWindow": "snapshot",
+        "defaultWindowNote": (
+            f"This 90-day snapshot ({START} to {END}) is King County Sheriff’s Office reports "
+            "outside the separately listed contract-city snapshots (Shoreline, Kenmore, Burien, SeaTac, "
+            "and other contract cities). Cases with a Seattle, Kent, Auburn, or similar city name are "
+            "still sheriff cases, not that city’s police department. "
+            f"{CREDIT}."
+        ),
+        "locationPrecision": (
+            "Official map points and block locations are approximate, already blurred to the 100-block. "
+            "CrimeStat does not display or store street addresses."
+        ),
+        "locationMode": "100block",
+        "types": TYPES,
+        "sensitive": sorted(SENSITIVE),
+        "burglaryUnsplit": True,
+        "bbox": bbox,
+        "center": center,
+        "offenseRows": len(residual),
+        "callRows": 0,
+        "cadence": "daily in the official King County feed; this snapshot is not live",
+    }
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
+    (out / "neighborhoods.json").write_text(json.dumps({
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {"id": 0, "name": label, "c": [round(c.x, 5), round(c.y, 5)]},
+            "geometry": mapping(geom),
+        }],
+        "bbox": bbox,
+    }, separators=(",", ":")))
+    (out / "offenses.json").write_text(json.dumps({
+        "points": points_out,
+        "areas": areas,
+    }, separators=(",", ":")))
+    report = {
+        "city": label,
+        "window": {"start": START, "end": END, "asOf": AS_OF, "days": 90},
+        "offenseRows": len(residual),
+        "layerCounts": {t: int(layer_counts[t]) for t in TYPES},
+        "layerCountsSum": int(sum(layer_counts.values())),
+        "dropped": dict(drop_counts),
+        "droppedSum": int(sum(drop_counts.values())),
+        "pointsOnMap": len(points_out),
+        "areaCells": len(areas),
+        "areaIncidentSum": int(sum(c for *_, c in areas)),
+        "missingOfficialPoint": missing_geom,
+        "bytes": {
+            "meta": (out / "meta.json").stat().st_size,
+            "neighborhoods": (out / "neighborhoods.json").stat().st_size,
+            "offenses": (out / "offenses.json").stat().st_size,
+        },
+    }
+    (out / "mapping-report.json").write_text(json.dumps(report, indent=2))
+    print(json.dumps(report, indent=2))
+    return report
+
+
 def main():
     rows = load_offense_rows()
-    for city_id, cfg in CITIES.items():
-        pts = load_points(cfg["map_layer"], cfg["key"])
-        build_city(city_id, rows, pts)
+    pts = load_all_points()
+    reports = {}
+    for city_id in CITIES:
+        reports[city_id] = build_city(city_id, rows, pts)
+    reports["kcsoother"] = build_residual(rows, pts)
+    summary = {k: {"offenseRows": v["offenseRows"], "pointsOnMap": v["pointsOnMap"]} for k, v in reports.items()}
+    print("SUMMARY", json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

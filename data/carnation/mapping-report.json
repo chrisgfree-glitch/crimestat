@@ -1,0 +1,57 @@
+{
+  "city": "Carnation",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 21,
+  "layerCounts": {
+    "burglary_residential": 0,
+    "burglary_business": 0,
+    "theft": 2,
+    "home_invasion": 0,
+    "assault": 2,
+    "rape": 0,
+    "battery": 0,
+    "robbery": 0,
+    "vandalism": 3,
+    "arson": 0,
+    "auto_theft": 0,
+    "kidnapping": 0,
+    "fraud": 3,
+    "drugs": 0,
+    "weapons": 0,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 10,
+  "dropped": {
+    "point_outside_city_margin": 8,
+    "no_matching_layer": 2,
+    "arrest_only_or_society": 1
+  },
+  "droppedSum": 11,
+  "pointsOnMap": 10,
+  "areaCells": 0,
+  "areaIncidentSum": 0,
+  "missingOfficialPoint": 8,
+  "codeMapped": {
+    "13B|assault": 3,
+    "35A|drugs": 1,
+    "26F|fraud": 2,
+    "23H|theft": 4,
+    "290|vandalism": 4,
+    "26E|fraud": 1,
+    "26A|fraud": 2,
+    "23F|theft": 1
+  },
+  "bytes": {
+    "meta": 1504,
+    "neighborhoods": 2372,
+    "offenses": 276
+  }
+}

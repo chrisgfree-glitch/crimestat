@@ -1,0 +1,68 @@
+{
+  "city": "Covington",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 172,
+  "layerCounts": {
+    "burglary_residential": 1,
+    "burglary_business": 0,
+    "theft": 54,
+    "home_invasion": 0,
+    "assault": 15,
+    "rape": 1,
+    "battery": 0,
+    "robbery": 1,
+    "vandalism": 25,
+    "arson": 0,
+    "auto_theft": 5,
+    "kidnapping": 0,
+    "fraud": 16,
+    "drugs": 2,
+    "weapons": 2,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 122,
+  "dropped": {
+    "no_matching_layer": 21,
+    "arrest_only_or_society": 28,
+    "point_outside_city_margin": 1
+  },
+  "droppedSum": 50,
+  "pointsOnMap": 121,
+  "areaCells": 1,
+  "areaIncidentSum": 1,
+  "missingOfficialPoint": 1,
+  "codeMapped": {
+    "23D|theft": 2,
+    "23C|theft": 31,
+    "26F|fraud": 3,
+    "240|auto_theft": 5,
+    "23F|theft": 8,
+    "26A|fraud": 6,
+    "290|vandalism": 26,
+    "23H|theft": 12,
+    "13B|assault": 11,
+    "26B|fraud": 3,
+    "13A|assault": 4,
+    "210|fraud": 3,
+    "11A|rape": 1,
+    "520|weapons": 2,
+    "35A|drugs": 2,
+    "220|burglary_residential": 1,
+    "23G|theft": 1,
+    "250|fraud": 1,
+    "120|robbery": 1
+  },
+  "bytes": {
+    "meta": 1506,
+    "neighborhoods": 3638,
+    "offenses": 3068
+  }
+}

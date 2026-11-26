@@ -1,0 +1,60 @@
+{
+  "city": "Newcastle",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 56,
+  "layerCounts": {
+    "burglary_residential": 1,
+    "burglary_business": 0,
+    "theft": 31,
+    "home_invasion": 0,
+    "assault": 4,
+    "rape": 0,
+    "battery": 0,
+    "robbery": 1,
+    "vandalism": 2,
+    "arson": 0,
+    "auto_theft": 6,
+    "kidnapping": 0,
+    "fraud": 1,
+    "drugs": 1,
+    "weapons": 0,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 47,
+  "dropped": {
+    "no_matching_layer": 5,
+    "arrest_only_or_society": 4
+  },
+  "droppedSum": 9,
+  "pointsOnMap": 47,
+  "areaCells": 0,
+  "areaIncidentSum": 0,
+  "missingOfficialPoint": 0,
+  "codeMapped": {
+    "23C|theft": 10,
+    "23F|theft": 5,
+    "23H|theft": 12,
+    "13B|assault": 4,
+    "290|vandalism": 2,
+    "240|auto_theft": 6,
+    "220|burglary_residential": 1,
+    "23D|theft": 3,
+    "26F|fraud": 1,
+    "35A|drugs": 1,
+    "120|robbery": 1,
+    "23G|theft": 1
+  },
+  "bytes": {
+    "meta": 1504,
+    "neighborhoods": 2470,
+    "offenses": 1198
+  }
+}

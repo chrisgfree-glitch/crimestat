@@ -1,0 +1,67 @@
+{
+  "city": "Woodinville",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 144,
+  "layerCounts": {
+    "burglary_residential": 0,
+    "burglary_business": 0,
+    "theft": 60,
+    "home_invasion": 0,
+    "assault": 10,
+    "rape": 1,
+    "battery": 0,
+    "robbery": 0,
+    "vandalism": 8,
+    "arson": 0,
+    "auto_theft": 1,
+    "kidnapping": 0,
+    "fraud": 7,
+    "drugs": 1,
+    "weapons": 0,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 88,
+  "dropped": {
+    "arrest_only_or_society": 31,
+    "no_matching_layer": 11,
+    "point_outside_city_margin": 14
+  },
+  "droppedSum": 56,
+  "pointsOnMap": 87,
+  "areaCells": 1,
+  "areaIncidentSum": 1,
+  "missingOfficialPoint": 14,
+  "codeMapped": {
+    "23D|theft": 8,
+    "23H|theft": 14,
+    "23C|theft": 34,
+    "26A|fraud": 2,
+    "23A|theft": 1,
+    "26B|fraud": 2,
+    "35A|drugs": 1,
+    "23G|theft": 5,
+    "13B|assault": 12,
+    "23F|theft": 3,
+    "26F|fraud": 3,
+    "290|vandalism": 10,
+    "11A|rape": 1,
+    "240|auto_theft": 2,
+    "13A|assault": 1,
+    "210|fraud": 1,
+    "26E|fraud": 1,
+    "250|fraud": 1
+  },
+  "bytes": {
+    "meta": 1512,
+    "neighborhoods": 3969,
+    "offenses": 2204
+  }
+}

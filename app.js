@@ -14,7 +14,36 @@
     everett: { lat: 47.9789, lng: -122.2021, label: "Everett, Washington" },
     shoreline: { lat: 47.7557, lng: -122.3415, label: "Shoreline, Washington" },
     kenmore: { lat: 47.7573, lng: -122.2440, label: "Kenmore, Washington" },
+    burien: { lat: 47.46908, lng: -122.3381, label: "Burien, Washington" },
+    seatac: { lat: 47.44226, lng: -122.2957, label: "SeaTac, Washington" },
+    covington: { lat: 47.36613, lng: -122.10141, label: "Covington, Washington" },
+    maplevalley: { lat: 47.36883, lng: -122.03206, label: "Maple Valley, Washington" },
+    woodinville: { lat: 47.75009, lng: -122.14355, label: "Woodinville, Washington" },
+    sammamish: { lat: 47.60546, lng: -122.03204, label: "Sammamish, Washington" },
+    northbend: { lat: 47.4891, lng: -121.76071, label: "North Bend, Washington" },
+    newcastle: { lat: 47.5307, lng: -122.16135, label: "Newcastle, Washington" },
+    carnation: { lat: 47.63977, lng: -121.89453, label: "Carnation, Washington" },
+    skykomish: { lat: 47.71056, lng: -121.35638, label: "Skykomish, Washington" },
+    kcsoother: { lat: 47.45601, lng: -121.89378, label: "King County Sheriff other areas, Washington" },
   };
+
+  const EXTRA_SNAPSHOTS = [
+    { id: "everett", name: "Everett", jump: "jumpEverett", settings: "settingsEverett" },
+    { id: "shoreline", name: "Shoreline", jump: "jumpShoreline", settings: "settingsShoreline" },
+    { id: "kenmore", name: "Kenmore", jump: "jumpKenmore", settings: "settingsKenmore" },
+    { id: "burien", name: "Burien", jump: "jumpBurien", settings: "settingsBurien" },
+    { id: "seatac", name: "SeaTac", jump: "jumpSeaTac", settings: "settingsSeaTac" },
+    { id: "covington", name: "Covington", jump: "jumpCovington", settings: "settingsCovington" },
+    { id: "maplevalley", name: "Maple Valley", jump: "jumpMapleValley", settings: "settingsMapleValley" },
+    { id: "woodinville", name: "Woodinville", jump: "jumpWoodinville", settings: "settingsWoodinville" },
+    { id: "sammamish", name: "Sammamish", jump: "jumpSammamish", settings: "settingsSammamish" },
+    { id: "northbend", name: "North Bend", jump: "jumpNorthBend", settings: "settingsNorthBend" },
+    { id: "newcastle", name: "Newcastle", jump: "jumpNewcastle", settings: "settingsNewcastle" },
+    { id: "carnation", name: "Carnation", jump: "jumpCarnation", settings: "settingsCarnation" },
+    { id: "skykomish", name: "Skykomish", jump: "jumpSkykomish", settings: "settingsSkykomish" },
+    { id: "kcsoother", name: "King County Sheriff (other)", jump: "jumpKcsoOther", settings: "settingsKcsoOther" },
+  ];
+  const EXTRA_IDS = EXTRA_SNAPSHOTS.map((c) => c.id);
 
   const LABELS = {
     burglary_residential: "Burglary — residential",
@@ -210,6 +239,8 @@
     if (region.id === "everett") return "Everett";
     if (region.id === "shoreline") return "Shoreline";
     if (region.id === "kenmore") return "Kenmore";
+    const extra = EXTRA_SNAPSHOTS.find((c) => c.id === region.id);
+    if (extra) return extra.name;
     return (region.meta && (region.meta.id || region.id)) || region.id;
   }
 
@@ -1338,12 +1369,11 @@
     if (jumpAuburn) jumpAuburn.addEventListener("click", () => showRegion("auburn"));
     const settingsAuburn = document.getElementById("settingsAuburn");
     if (settingsAuburn) settingsAuburn.addEventListener("click", () => { closeAll(); showRegion("auburn"); });
-    for (const id of ["everett", "shoreline", "kenmore"]) {
-      const cap = id[0].toUpperCase() + id.slice(1);
-      const jump = document.getElementById("jump" + cap);
-      if (jump) jump.addEventListener("click", () => showRegion(id));
-      const settings = document.getElementById("settings" + cap);
-      if (settings) settings.addEventListener("click", () => { closeAll(); showRegion(id); });
+    for (const city of EXTRA_SNAPSHOTS) {
+      const jump = document.getElementById(city.jump);
+      if (jump) jump.addEventListener("click", () => showRegion(city.id));
+      const settings = document.getElementById(city.settings);
+      if (settings) settings.addEventListener("click", () => { closeAll(); showRegion(city.id); });
     }
 
     document.getElementById("layerList").addEventListener("change", async (e) => {
@@ -1426,6 +1456,17 @@
         showRegion("kenmore");
         return;
       }
+      if (!hit && /\bburien\b/i.test(q)) { showRegion("burien"); return; }
+      if (!hit && /sea\s*-?tac/i.test(q)) { showRegion("seatac"); return; }
+      if (!hit && /covington/i.test(q)) { showRegion("covington"); return; }
+      if (!hit && /maple\s*valley/i.test(q)) { showRegion("maplevalley"); return; }
+      if (!hit && /woodinville/i.test(q)) { showRegion("woodinville"); return; }
+      if (!hit && /sammamish/i.test(q)) { showRegion("sammamish"); return; }
+      if (!hit && /north\s*bend/i.test(q)) { showRegion("northbend"); return; }
+      if (!hit && /\bnewcastle\b/i.test(q)) { showRegion("newcastle"); return; }
+      if (!hit && /carnation/i.test(q)) { showRegion("carnation"); return; }
+      if (!hit && /skykomish/i.test(q)) { showRegion("skykomish"); return; }
+      if (!hit && /king\s*county\s*sheriff|kcso\s*other|unincorporated\s*king/i.test(q)) { showRegion("kcsoother"); return; }
       if (!hit) {
         setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
         return;
@@ -1439,6 +1480,17 @@
       else if (/\beverett\b/i.test(q)) showRegion("everett");
       else if (/\bshoreline\b/i.test(q)) showRegion("shoreline");
       else if (/\bkenmore\b/i.test(q)) showRegion("kenmore");
+      else if (/\bburien\b/i.test(q)) showRegion("burien");
+      else if (/sea\s*-?tac/i.test(q)) showRegion("seatac");
+      else if (/covington/i.test(q)) showRegion("covington");
+      else if (/maple\s*valley/i.test(q)) showRegion("maplevalley");
+      else if (/woodinville/i.test(q)) showRegion("woodinville");
+      else if (/sammamish/i.test(q)) showRegion("sammamish");
+      else if (/north\s*bend/i.test(q)) showRegion("northbend");
+      else if (/\bnewcastle\b/i.test(q)) showRegion("newcastle");
+      else if (/carnation/i.test(q)) showRegion("carnation");
+      else if (/skykomish/i.test(q)) showRegion("skykomish");
+      else if (/king\s*county\s*sheriff|kcso\s*other|unincorporated\s*king/i.test(q)) showRegion("kcsoother");
       else setLocMessage("Address lookup failed. Wait a moment and try again.");
     }
   }
@@ -1540,15 +1592,15 @@
       });
     } catch (_) { /* optional */ }
 
-    for (const id of ["everett", "shoreline", "kenmore"]) {
+    for (const city of EXTRA_SNAPSHOTS) {
       try {
         const [cMeta, cNbh, cOff] = await Promise.all([
-          fetchJson(`/data/${id}/meta.json`),
-          fetchJson(`/data/${id}/neighborhoods.json`),
-          fetchJson(`/data/${id}/offenses.json`),
+          fetchJson(`/data/${city.id}/meta.json`),
+          fetchJson(`/data/${city.id}/neighborhoods.json`),
+          fetchJson(`/data/${city.id}/offenses.json`),
         ]);
         state.regions.push({
-          id,
+          id: city.id,
           kind: "incidents",
           meta: cMeta,
           neighborhoods: cNbh,
@@ -1563,9 +1615,7 @@
       ["seattle", "jumpSeattle", "settingsSeattle", "Seattle"],
       ["kent", "jumpKent", "settingsKent", "Kent"],
       ["auburn", "jumpAuburn", "settingsAuburn", "Auburn"],
-      ["everett", "jumpEverett", "settingsEverett", "Everett"],
-      ["shoreline", "jumpShoreline", "settingsShoreline", "Shoreline"],
-      ["kenmore", "jumpKenmore", "settingsKenmore", "Kenmore"],
+      ...EXTRA_SNAPSHOTS.map((c) => [c.id, c.jump, c.settings, c.name]),
     ]) {
       if (!findRegion(id)) continue;
       const jump = document.getElementById(jumpId);
@@ -1577,8 +1627,12 @@
     const emptyCopy = document.querySelector("#emptyState p:nth-of-type(2)");
     if (emptyCopy) {
       const list = ["Spokane", ...coveredNames];
-      const listed = list.length === 1 ? list[0] : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
-      emptyCopy.textContent = `Official public data is available for ${listed}. Search a city to view it.`;
+      if (list.length > 8) {
+        emptyCopy.textContent = "Official public data is available for Spokane, Seattle, Auburn, Everett, and King County Sheriff cities including Burien, Shoreline, SeaTac, and others. Search a city to view it.";
+      } else {
+        const listed = list.length === 1 ? list[0] : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+        emptyCopy.textContent = `Official public data is available for ${listed}. Search a city to view it.`;
+      }
     }
 
     document.getElementById("asOfBanner").textContent =

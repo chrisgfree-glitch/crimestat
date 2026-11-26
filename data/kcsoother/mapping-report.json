@@ -1,0 +1,46 @@
+{
+  "city": "King County Sheriff (other areas)",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 1754,
+  "layerCounts": {
+    "burglary_residential": 11,
+    "burglary_business": 0,
+    "theft": 281,
+    "home_invasion": 0,
+    "assault": 229,
+    "rape": 9,
+    "battery": 0,
+    "robbery": 18,
+    "vandalism": 162,
+    "arson": 3,
+    "auto_theft": 110,
+    "kidnapping": 3,
+    "fraud": 88,
+    "drugs": 134,
+    "weapons": 34,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 1082,
+  "dropped": {
+    "arrest_only_or_society": 483,
+    "no_matching_layer": 189
+  },
+  "droppedSum": 672,
+  "pointsOnMap": 1073,
+  "areaCells": 9,
+  "areaIncidentSum": 9,
+  "missingOfficialPoint": 0,
+  "bytes": {
+    "meta": 1646,
+    "neighborhoods": 1169,
+    "offenses": 27134
+  }
+}

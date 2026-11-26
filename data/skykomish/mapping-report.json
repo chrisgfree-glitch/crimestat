@@ -1,0 +1,46 @@
+{
+  "city": "Skykomish",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 1,
+  "layerCounts": {
+    "burglary_residential": 0,
+    "burglary_business": 0,
+    "theft": 0,
+    "home_invasion": 0,
+    "assault": 0,
+    "rape": 0,
+    "battery": 0,
+    "robbery": 0,
+    "vandalism": 0,
+    "arson": 0,
+    "auto_theft": 0,
+    "kidnapping": 0,
+    "fraud": 1,
+    "drugs": 0,
+    "weapons": 0,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 1,
+  "dropped": {},
+  "droppedSum": 0,
+  "pointsOnMap": 1,
+  "areaCells": 0,
+  "areaIncidentSum": 0,
+  "missingOfficialPoint": 0,
+  "codeMapped": {
+    "26F|fraud": 1
+  },
+  "bytes": {
+    "meta": 1504,
+    "neighborhoods": 858,
+    "offenses": 49
+  }
+}
