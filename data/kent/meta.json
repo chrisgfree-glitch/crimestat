@@ -1,0 +1,27 @@
+{
+  "id": "kent",
+  "kind": "annual-summary",
+  "label": "Kent Police Department annual totals reported to WASPC, 2025; not incident-level, not real-time.",
+  "cardTitle": "Kent Police Department annual totals reported to WASPC, 2025; not incident-level, not real-time",
+  "cardNote": "Figures are copied from the Washington State Statistical Analysis Center NIBRS spreadsheet (nibrs_12_25.xlsx, sheet Reported, Location = Kent Police Department). This is not an incident map and is not a real-time feed. CrimeStat does not use King County Sheriff city=KENT rows for Kent.",
+  "source": "https://sac.ofm.wa.gov/sites/default/files/nibrs_12_25.xlsx",
+  "asOf": "2025-12-31",
+  "start": "2025-01-01",
+  "end": "2025-12-31",
+  "year": "2025",
+  "timeBase": "asOf",
+  "defaultWindow": "snapshot",
+  "defaultWindowNote": "Kent is shown as annual agency totals for the most recent years in the official WASPC/Washington NIBRS file, not as 30/60/90-day incidents. The time-window buttons do not change these annual totals.",
+  "locationPrecision": "Kent is shown as a city-limit outline only. No pins or street addresses are published for this feed.",
+  "bbox": [
+    -122.30966,
+    47.34347,
+    -121.99501,
+    47.44117
+  ],
+  "center": [
+    -122.22369,
+    47.39233
+  ],
+  "boundarySource": "https://gis-cityofkent.opendata.arcgis.com/datasets/7f6b7e4e518344a3b625a5b3b88f6e79_0"
+}

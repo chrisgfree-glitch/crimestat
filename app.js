@@ -3,10 +3,12 @@
   const MILES5 = 1609.344 * 5;
   const STORAGE_KEY = "crimestat-ui-v2";
   const OFF_BY_DEFAULT = new Set(["domestic_violence", "stalking", "shots_fired", "calls"]);
-  const START = Date.UTC(2026, 4, 1);
-  const AS_OF = Date.UTC(2026, 8, 27);
   const WINDOW_DAYS = { "30d": 30, "60d": 60, "90d": 90, "6m": 182, "1y": 365, "5y": 365 * 5 };
-  const SPOKANE_FALLBACK = { lat: 47.6588, lng: -117.426, label: "Spokane, Washington" };
+  const REGION_FALLBACKS = {
+    spokane: { lat: 47.6588, lng: -117.426, label: "Spokane, Washington" },
+    seattle: { lat: 47.6062, lng: -122.3321, label: "Seattle, Washington" },
+    kent: { lat: 47.3900, lng: -122.2135, label: "Kent, Washington" },
+  };
 
   const LABELS = {
     burglary_residential: "Burglary — residential",
@@ -42,9 +44,11 @@
     offenses: null,
     calls: null,
     callsLoading: false,
+    regions: [],
     svg: {},
     center: null,
     inCoverage: false,
+    visibleKey: "",
   };
 
   let map, pinLayer, areaLayer, heatLayer, radiusCircle, userMarker, nbhLayer, callsLayer;
@@ -67,15 +71,54 @@
     }));
   }
 
-  function inWindow(day) {
-    if (state.time === "snapshot") return true;
-    const ms = START + day * 864e5;
-    return AS_OF - ms <= WINDOW_DAYS[state.time] * 864e5;
+  function parseYmdUtc(iso) {
+    const parts = String(iso || "").split("-").map(Number);
+    if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return NaN;
+    return Date.UTC(parts[0], parts[1] - 1, parts[2]);
   }
 
-  function formatDay(day) {
-    const dt = new Date(START + day * 864e5);
+  function regionStartMs(region) {
+    return parseYmdUtc(region.meta && region.meta.start);
+  }
+
+  function regionAsOfMs(region) {
+    return parseYmdUtc(region.meta && region.meta.asOf);
+  }
+
+  function inWindow(region, day) {
+    if (state.time === "snapshot") return true;
+    const start = regionStartMs(region);
+    const asOf = regionAsOfMs(region);
+    if (!Number.isFinite(start) || !Number.isFinite(asOf)) return false;
+    const ms = start + day * 864e5;
+    return asOf - ms <= WINDOW_DAYS[state.time] * 864e5;
+  }
+
+  function formatDay(region, day) {
+    const dt = new Date(regionStartMs(region) + day * 864e5);
     return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  }
+
+  function typeOn(region, type) {
+    if (region.meta && region.meta.burglaryUnsplit && type === "burglary_residential") {
+      return !!(state.layers.burglary_residential || state.layers.burglary_business);
+    }
+    if (region.meta && region.meta.burglaryUnsplit && type === "burglary_business") return false;
+    return !!state.layers[type];
+  }
+
+  function typeLabel(region, type) {
+    if (region.meta && region.meta.burglaryUnsplit && (type === "burglary_residential" || type === "burglary_business")) {
+      return "Burglary";
+    }
+    return LABELS[type] || type;
+  }
+
+  function pinNoteFor(region) {
+    if (region.id === "seattle") {
+      return "Location is the official 100-block or MCPP neighborhood, not a street address.";
+    }
+    return PIN_NOTE;
   }
 
   function applyDefaultLayers() {
@@ -85,10 +128,26 @@
     if (typeof state.layers.calls !== "boolean") state.layers.calls = false;
   }
 
-  function coverageBounds() {
-    const b = state.meta && state.meta.bbox;
+  function regionBounds(region) {
+    const b = region && region.meta && region.meta.bbox;
     if (!b) return null;
     return L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
+  }
+
+  function coverageBounds() {
+    const bounds = state.regions.map(regionBounds).filter(Boolean);
+    if (!bounds.length) {
+      const b = state.meta && state.meta.bbox;
+      if (!b) return null;
+      return L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
+    }
+    let acc = bounds[0];
+    for (let i = 1; i < bounds.length; i++) acc = acc.extend(bounds[i]);
+    return acc;
+  }
+
+  function findRegion(id) {
+    return state.regions.find((r) => r.id === id) || null;
   }
 
   function radiusBounds(lat, lng, meters) {
@@ -97,11 +156,37 @@
     return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
   }
 
+  function regionInView(region) {
+    const cov = regionBounds(region);
+    if (!cov) return false;
+    if (state.center) {
+      const around = radiusBounds(state.center.lat, state.center.lng, MILES5);
+      if (cov.intersects(around) || cov.contains([state.center.lat, state.center.lng])) return true;
+    }
+    if (map) {
+      const mb = map.getBounds();
+      if (mb && mb.isValid() && mb.intersects(cov)) return true;
+    }
+    return false;
+  }
+
+  function visibleRegions() {
+    return state.regions.filter(regionInView);
+  }
+
   function viewIntersectsCoverage() {
-    const cov = coverageBounds();
-    if (!cov || !state.center) return false;
-    const around = radiusBounds(state.center.lat, state.center.lng, MILES5);
-    return cov.intersects(around) || cov.contains([state.center.lat, state.center.lng]);
+    return visibleRegions().length > 0;
+  }
+
+  function updateBanner(regions) {
+    const banner = document.getElementById("asOfBanner");
+    if (!banner) return;
+    if (!regions.length) return;
+    banner.textContent = regions.map((r) => {
+      const label = r.meta && r.meta.label || "";
+      if (/not a real-time/i.test(label)) return label;
+      return `${label} This is public data as of that date, not a real-time feed.`;
+    }).join(" ");
   }
 
   function setLocMessage(text) {
@@ -149,22 +234,15 @@
       heatLayer = null;
     }
 
-    const covered = viewIntersectsCoverage();
+    const regions = visibleRegions();
+    const covered = regions.length > 0;
     state.inCoverage = covered;
+    state.visibleKey = regions.map((r) => r.id).join(",");
     document.getElementById("emptyState").hidden = covered;
-    if (!covered || !state.offenses || !state.neighborhoods) return;
+    if (covered) updateBanner(regions);
+    if (!covered) return;
 
     const heat = [];
-    const nbhArea = new Map(); // id -> [{type, count}]
-    const features = state.neighborhoods.features || [];
-
-    for (const row of state.offenses.areas) {
-      const [t, n, d, c] = row;
-      const type = state.types[t];
-      if (!type || !state.layers[type] || !inWindow(d)) continue;
-      if (!nbhArea.has(n)) nbhArea.set(n, {});
-      nbhArea.get(n)[type] = (nbhArea.get(n)[type] || 0) + c;
-    }
 
     function badgeMarker(latlng, html, popupTitle, popupBody, popupNote, borderColor) {
       const icon = L.divIcon({
@@ -184,85 +262,139 @@
       return b.getCenter();
     }
 
-    if (state.layers.calls && state.calls) {
-      const callCounts = new Map();
-      for (const [n, d, c] of state.calls.cells) {
-        if (!inWindow(d)) continue;
-        callCounts.set(n, (callCounts.get(n) || 0) + c);
+    for (const region of regions) {
+      if (region.kind === "annual-summary") {
+        renderAnnualSummary(region, badgeMarker, centroidOf);
+        continue;
       }
+      if (!region.offenses || !region.neighborhoods) continue;
+      const types = region.meta.types || state.types;
+      const features = region.neighborhoods.features || [];
+      const nbhArea = new Map();
+
+      for (const row of region.offenses.areas || []) {
+        const [t, n, d, c] = row;
+        const type = types[t];
+        if (!type || !typeOn(region, type) || !inWindow(region, d)) continue;
+        if (!nbhArea.has(n)) nbhArea.set(n, {});
+        nbhArea.get(n)[type] = (nbhArea.get(n)[type] || 0) + c;
+      }
+
+      if (state.layers.calls && region.calls) {
+        const callCounts = new Map();
+        for (const [n, d, c] of region.calls.cells || []) {
+          if (!inWindow(region, d)) continue;
+          callCounts.set(n, (callCounts.get(n) || 0) + c);
+        }
+        for (const feat of features) {
+          const id = feat.properties.id;
+          const count = callCounts.get(id);
+          if (!count) continue;
+          const color = "#5d6d7e";
+          L.geoJSON(feat, {
+            style: { color, weight: 1.4, fillColor: "#ffffff", fillOpacity: 0, dashArray: "5 4" },
+            interactive: false,
+          }).addTo(callsLayer);
+          const svg = state.svg.calls || "";
+          badgeMarker(
+            centroidOf(feat),
+            `${svg}<span class="nbh-n">${count.toLocaleString()}</span>`,
+            "Calls (911/CAD), not confirmed crimes",
+            `<strong>${count.toLocaleString()}</strong> calls in ${feat.properties.name} during the selected window.`,
+            "This is the official calls-for-service feed (911, Crime Check, officer-initiated, dispatch). It is not a confirmed crime layer.",
+            color
+          ).addTo(callsLayer);
+        }
+      }
+
       for (const feat of features) {
         const id = feat.properties.id;
-        const count = callCounts.get(id);
-        if (!count) continue;
-        const color = "#5d6d7e";
+        const bag = nbhArea.get(id);
+        if (!bag) continue;
+        const typelist = Object.keys(bag);
+        const total = typelist.reduce((s, typ) => s + bag[typ], 0);
+        const primary = typelist.slice().sort((a, b) => bag[b] - bag[a])[0];
+        const icons = typelist.slice(0, 3).map((typ) => state.svg[typ] || "").join("");
         L.geoJSON(feat, {
-          style: { color, weight: 1.4, fillColor: "#ffffff", fillOpacity: 0, dashArray: "5 4" },
+          style: { color: typeColor(primary), weight: 1.6, fillColor: "#ffffff", fillOpacity: 0 },
           interactive: false,
-        }).addTo(callsLayer);
-        const svg = state.svg.calls || "";
+        }).addTo(areaLayer);
         badgeMarker(
           centroidOf(feat),
-          `${svg}<span class="nbh-n">${count.toLocaleString()}</span>`,
-          "Calls (911/CAD), not confirmed crimes",
-          `<strong>${count.toLocaleString()}</strong> calls in ${feat.properties.name} during the selected window.`,
-          "This is the official calls-for-service feed (911, Crime Check, officer-initiated, dispatch). It is not a confirmed crime layer.",
-          color
-        ).addTo(callsLayer);
+          `${icons}<span class="nbh-n">${total.toLocaleString()}</span>`,
+          feat.properties.name,
+          typelist.map((typ) => `${typeLabel(region, typ)}: ${bag[typ]}`).join("<br>"),
+          AREA_NOTE,
+          typeColor(primary)
+        ).addTo(areaLayer);
+      }
+
+      if (state.view === "heat") {
+        for (const row of region.offenses.points || []) {
+          const [t, n, d, x, y] = row;
+          const type = types[t];
+          if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+          heat.push([y / 10000, x / 10000, 0.6]);
+        }
+      } else {
+        for (const row of region.offenses.points || []) {
+          const [t, n, d, x, y] = row;
+          const type = types[t];
+          if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+          const feat = features[n];
+          const name = feat ? feat.properties.name : "Unknown neighborhood";
+          const label = typeLabel(region, type);
+          const marker = L.marker([y / 10000, x / 10000], {
+            icon: iconFor(type),
+            title: label,
+            keyboard: false,
+          }).bindPopup(popupHtml(
+            label,
+            `${name}<br>${formatDay(region, d)}`,
+            pinNoteFor(region)
+          ));
+          pinLayer.addLayer(marker);
+        }
       }
     }
 
+    if (state.view === "heat" && heat.length) {
+      heatLayer = L.heatLayer(heat, { radius: 28, blur: 22, maxZoom: 16, minOpacity: 0.28 });
+      heatLayer.addTo(map);
+    }
+  }
+
+  function renderAnnualSummary(region, badgeMarker, centroidOf) {
+    const features = (region.neighborhoods && region.neighborhoods.features) || [];
+    const summary = region.summary || {};
+    const year = (region.meta && region.meta.year) || summary.latestYear;
+    const rows = summary.rows || [];
+    if (!features.length || !rows.length) return;
     for (const feat of features) {
-      const id = feat.properties.id;
-      const bag = nbhArea.get(id);
-      if (!bag) continue;
-      const types = Object.keys(bag);
-      const total = types.reduce((s, typ) => s + bag[typ], 0);
-      const primary = types.slice().sort((a, b) => bag[b] - bag[a])[0];
-      const icons = types.slice(0, 3).map((typ) => state.svg[typ] || "").join("");
       L.geoJSON(feat, {
-        style: { color: typeColor(primary), weight: 1.6, fillColor: "#ffffff", fillOpacity: 0 },
+        style: { color: "#1a5bd6", weight: 2, fillColor: "#1a5bd6", fillOpacity: 0.18 },
         interactive: false,
       }).addTo(areaLayer);
-      badgeMarker(
-        centroidOf(feat),
-        `${icons}<span class="nbh-n">${total.toLocaleString()}</span>`,
-        feat.properties.name,
-        types.map((typ) => `${LABELS[typ]}: ${bag[typ]}`).join("<br>"),
-        AREA_NOTE,
-        typeColor(primary)
-      ).addTo(areaLayer);
     }
-
-    if (state.view === "heat") {
-      for (const row of state.offenses.points) {
-        const [t, n, d, x, y] = row;
-        const type = state.types[t];
-        if (!type || !state.layers[type] || !inWindow(d)) continue;
-        heat.push([y / 10000, x / 10000, 0.6]);
-      }
-      if (heat.length) {
-        heatLayer = L.heatLayer(heat, { radius: 28, blur: 22, maxZoom: 16, minOpacity: 0.28 });
-        heatLayer.addTo(map);
-      }
-    } else {
-      for (const row of state.offenses.points) {
-        const [t, n, d, x, y] = row;
-        const type = state.types[t];
-        if (!type || !state.layers[type] || !inWindow(d) || SENSITIVE.has(type)) continue;
-        const feat = features[n];
-        const name = feat ? feat.properties.name : "Unknown neighborhood";
-        const marker = L.marker([y / 10000, x / 10000], {
-          icon: iconFor(type),
-          title: LABELS[type],
-          keyboard: false,
-        }).bindPopup(popupHtml(
-          LABELS[type],
-          `${name}<br>${formatDay(d)}`,
-          PIN_NOTE
-        ));
-        pinLayer.addLayer(marker);
-      }
+    const groups = rows.filter((row) => /Total/i.test(row.label) || /PrsnTotal|PrprtyTotal|SctyTotal/.test(row.field || ""));
+    const details = rows.filter((row) => !groups.includes(row));
+    const prior = summary.priorYear;
+    let body = groups.map((row) => `${row.label}: ${Number(row.count).toLocaleString()}`).join("<br>");
+    if (details.length) {
+      body += "<br><br>" + details.map((row) => `${row.label}: ${Number(row.count).toLocaleString()}`).join("<br>");
     }
+    if (prior && prior.year) {
+      body += `<br><br>${prior.year} from the same official file — Total: ${Number(prior.total).toLocaleString()}; crimes against persons: ${Number(prior.PrsnTotal).toLocaleString()}; property: ${Number(prior.PrprtyTotal).toLocaleString()}; society: ${Number(prior.SctyTotal).toLocaleString()}.`;
+    }
+    const title = (region.meta && (region.meta.cardTitle || region.meta.label)) || "Annual totals";
+    badgeMarker(
+      centroidOf(features[0]),
+      `<span class="nbh-n">${summary.total != null ? Number(summary.total).toLocaleString() : (year || "Totals")}</span>`,
+      title,
+      body,
+      (region.meta && region.meta.cardNote) || "Annual agency totals, not incident-level and not real-time.",
+      "#1a5bd6"
+    ).addTo(areaLayer);
   }
 
   function typeColor(type) {
@@ -272,13 +404,17 @@
   }
 
   async function ensureCalls() {
-    if (state.calls || state.callsLoading) return;
+    const spokane = findRegion("spokane");
+    if ((spokane && spokane.calls) || state.calls || state.callsLoading) return;
     state.callsLoading = true;
     try {
       const res = await fetch("/data/calls.json");
-      state.calls = await res.json();
+      const data = await res.json();
+      state.calls = data;
+      if (spokane) spokane.calls = data;
     } catch (_) {
       state.calls = { cells: [] };
+      if (spokane) spokane.calls = { cells: [] };
     } finally {
       state.callsLoading = false;
     }
@@ -317,13 +453,20 @@
     render();
   }
 
-  function showSpokane() {
-    const cov = coverageBounds();
-    const c = state.meta && state.meta.center;
-    const lng = c ? c[0] : SPOKANE_FALLBACK.lng;
-    const lat = c ? c[1] : SPOKANE_FALLBACK.lat;
-    setCenter(lat, lng, "Spokane, Washington");
+  function showRegion(id) {
+    const region = findRegion(id);
+    const fallback = REGION_FALLBACKS[id] || {};
+    if (!region && !fallback.lat) return;
+    const c = region && region.meta && region.meta.center;
+    const lng = c ? c[0] : fallback.lng;
+    const lat = c ? c[1] : fallback.lat;
+    setCenter(lat, lng, fallback.label || (region && region.meta && region.meta.label) || id);
+    const cov = region ? regionBounds(region) : null;
     if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13, animate: false });
+  }
+
+  function showSpokane() {
+    showRegion("spokane");
   }
 
   function formatAddress(result) {
@@ -374,7 +517,7 @@
   }
 
   function neighborhoodsByDistance(lat, lng) {
-    const feats = (state.neighborhoods && state.neighborhoods.features) || [];
+    const feats = state.regions.flatMap((r) => (r.neighborhoods && r.neighborhoods.features) || []);
     return feats.map((feat) => {
       const c = feat.properties && feat.properties.c;
       const clat = c ? c[1] : NaN;
@@ -575,15 +718,10 @@
     }).addTo(map);
     map.setView([39.8283, -98.5795], 4);
     map.on("moveend", () => {
-      // keep empty-state accurate if the user pans into/out of Spokane
+      // Keep the empty-state and layers accurate if the user pans into or between covered cities.
       if (!state.center) return;
-      const covered = viewIntersectsCoverage() || (coverageBounds() && map.getBounds().intersects(coverageBounds()));
-      // If they panned to Spokane without recentering, still show data
-      if (covered && !state.inCoverage) {
-        state.inCoverage = true;
-        document.getElementById("emptyState").hidden = true;
-        render();
-      }
+      const key = visibleRegions().map((r) => r.id).join(",");
+      if (key !== state.visibleKey) render();
     });
   }
 
@@ -740,6 +878,14 @@
     document.getElementById("settingsLocate").addEventListener("click", () => { closeAll(); locateUser(); });
     document.getElementById("settingsSpokane").addEventListener("click", () => { closeAll(); showSpokane(); });
     document.getElementById("jumpSpokane").addEventListener("click", showSpokane);
+    const jumpSeattle = document.getElementById("jumpSeattle");
+    if (jumpSeattle) jumpSeattle.addEventListener("click", () => showRegion("seattle"));
+    const settingsSeattle = document.getElementById("settingsSeattle");
+    if (settingsSeattle) settingsSeattle.addEventListener("click", () => { closeAll(); showRegion("seattle"); });
+    const jumpKent = document.getElementById("jumpKent");
+    if (jumpKent) jumpKent.addEventListener("click", () => showRegion("kent"));
+    const settingsKent = document.getElementById("settingsKent");
+    if (settingsKent) settingsKent.addEventListener("click", () => { closeAll(); showRegion("kent"); });
 
     document.getElementById("layerList").addEventListener("change", async (e) => {
       const box = e.target.closest("[data-layer]");
@@ -795,6 +941,14 @@
         showSpokane();
         return;
       }
+      if (!hit && /seattle/i.test(q)) {
+        showRegion("seattle");
+        return;
+      }
+      if (!hit && /\bkent\b/i.test(q)) {
+        showRegion("kent");
+        return;
+      }
       if (!hit) {
         setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
         return;
@@ -802,6 +956,8 @@
       setCenter(Number(hit.lat), Number(hit.lon), formatAddress(hit) || hit.display_name);
     } catch (_) {
       if (/spokane/i.test(q)) showSpokane();
+      else if (/seattle/i.test(q)) showRegion("seattle");
+      else if (/\bkent\b/i.test(q)) showRegion("kent");
       else setLocMessage("Address lookup failed. Wait a moment and try again.");
     }
   }
@@ -840,19 +996,76 @@
     state.neighborhoods = neighborhoods;
     state.offenses = offenses;
     state.types = meta.types || [];
+    state.regions = [{
+      id: "spokane",
+      kind: "incidents",
+      meta: Object.assign({ id: "spokane" }, meta),
+      neighborhoods,
+      offenses,
+      calls: null,
+    }];
     applyDefaultLayers();
 
     const iconNames = state.types.concat(["calls"]);
     const svgs = await Promise.all(iconNames.map(loadSvg));
     iconNames.forEach((name, i) => { state.svg[name] = svgs[i]; });
 
+    try {
+      const [sMeta, sNbh, sOff] = await Promise.all([
+        fetchJson("/data/seattle/meta.json"),
+        fetchJson("/data/seattle/neighborhoods.json"),
+        fetchJson("/data/seattle/offenses.json"),
+      ]);
+      state.regions.push({
+        id: "seattle",
+        kind: "incidents",
+        meta: sMeta,
+        neighborhoods: sNbh,
+        offenses: sOff,
+        calls: null,
+      });
+    } catch (_) { /* Spokane still works if Seattle data is missing */ }
+
+    try {
+      const [kMeta, kNbh, kSum] = await Promise.all([
+        fetchJson("/data/kent/meta.json"),
+        fetchJson("/data/kent/neighborhoods.json"),
+        fetchJson("/data/kent/summary.json"),
+      ]);
+      state.regions.push({
+        id: "kent",
+        kind: "annual-summary",
+        meta: kMeta,
+        neighborhoods: kNbh,
+        summary: kSum,
+        offenses: null,
+        calls: null,
+      });
+    } catch (_) { /* optional */ }
+
+    if (findRegion("kent")) {
+      const jk = document.getElementById("jumpKent");
+      const sk = document.getElementById("settingsKent");
+      if (jk) jk.hidden = false;
+      if (sk) sk.hidden = false;
+      const emptyCopy = document.querySelector("#emptyState p:nth-of-type(2)");
+      if (emptyCopy) emptyCopy.textContent = "Official public data is available for Spokane, Seattle, and Kent. Search a city to view it.";
+    }
+
     document.getElementById("asOfBanner").textContent =
       `${meta.label} This is public data as of that date, not a real-time feed.`;
     syncChromeHeight();
+    const aboutBits = state.regions.map((r) => {
+      const label = r.meta.label || "";
+      const note = r.meta.defaultWindowNote || "";
+      return [label, note].filter(Boolean).join(" ");
+    });
     document.getElementById("settingsAbout").textContent =
-      `${meta.label} This is Spokane-area public data as of that as-of date, not a real-time feed. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat. ${meta.defaultWindowNote || ""}`;
+      `${aboutBits.join(" ")} Locations are shown at neighborhood or city level only. Street addresses are not published on CrimeStat.`;
 
-    if (neighborhoods) nbhLayer.addData(neighborhoods);
+    for (const region of state.regions) {
+      if (region.neighborhoods) nbhLayer.addData(region.neighborhoods);
+    }
     buildLayerList();
     syncControls();
     setBootState("ready");

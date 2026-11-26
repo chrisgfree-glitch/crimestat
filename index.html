@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>CrimeStat — Local Crime Map</title>
-  <meta name="description" content="Free Spokane-area crime map with toggleable crime-type layers. Official public data as of its as-of date, not real-time. Install it on your iPhone or Android home screen from this website.">
+  <meta name="description" content="Free crime map with official Spokane and Seattle public incident data and Kent Police Department annual totals reported to WASPC, shown as of each city’s as-of date, not real-time. Install it on your iPhone or Android home screen from this website.">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
@@ -82,8 +82,12 @@
       </div>
       <div id="emptyState" class="empty-state" hidden>
         <p><strong>No public data feed for this area yet.</strong></p>
-        <p>Official Spokane Police Department data is available. Search Spokane to view it.</p>
-        <button type="button" id="jumpSpokane" class="primary">View Spokane</button>
+        <p>Official public data is available for Spokane and Seattle. Search a city to view it.</p>
+        <div class="empty-actions">
+          <button type="button" id="jumpSpokane" class="primary">View Spokane</button>
+          <button type="button" id="jumpSeattle" class="primary">View Seattle</button>
+          <button type="button" id="jumpKent" class="primary" hidden>View Kent</button>
+        </div>
       </div>
       <div class="map-controls">
         <div class="seg" role="group" aria-label="Time window">
@@ -159,6 +163,8 @@
       <li><button type="button" id="resetFilters">Reset layers, time, and view</button></li>
       <li><button type="button" id="settingsLocate">Nearby me</button></li>
       <li><button type="button" id="settingsSpokane">View Spokane data</button></li>
+      <li><button type="button" id="settingsSeattle">View Seattle data</button></li>
+      <li><button type="button" id="settingsKent" hidden>View Kent totals</button></li>
     </ul>
     <h3>About this data</h3>
     <p id="settingsAbout">Official City of Spokane Police Department public records. This is Spokane-area public data as of its as-of date, not a real-time feed. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat.</p>

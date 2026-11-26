@@ -1,0 +1,255 @@
+{
+  "agency": "Kent Police Department",
+  "sourceUrl": "https://sac.ofm.wa.gov/sites/default/files/nibrs_12_25.xlsx",
+  "sourceSheet": "Reported",
+  "sourceFile": "nibrs_12_25.xlsx",
+  "latestYear": "2025",
+  "years": [
+    "2024",
+    "2025"
+  ],
+  "total": 7619,
+  "population": 140100,
+  "ratePublished": 54.382583868,
+  "rows": [
+    {
+      "label": "Total",
+      "field": "Total",
+      "count": 7619,
+      "year": "2025"
+    },
+    {
+      "label": "Crimes against persons (PrsnTotal)",
+      "field": "PrsnTotal",
+      "count": 2283,
+      "year": "2025"
+    },
+    {
+      "label": "Crimes against property (PrprtyTotal)",
+      "field": "PrprtyTotal",
+      "count": 4680,
+      "year": "2025"
+    },
+    {
+      "label": "Crimes against society (SctyTotal)",
+      "field": "SctyTotal",
+      "count": 656,
+      "year": "2025"
+    },
+    {
+      "label": "Murder",
+      "field": "Murder",
+      "count": 1,
+      "year": "2025"
+    },
+    {
+      "label": "Manslaughter",
+      "field": "Manslaughter",
+      "count": 0,
+      "year": "2025"
+    },
+    {
+      "label": "Forcible_Sex",
+      "field": "Forcible_Sex",
+      "count": 116,
+      "year": "2025"
+    },
+    {
+      "label": "Assault",
+      "field": "Assault",
+      "count": 1720,
+      "year": "2025"
+    },
+    {
+      "label": "Non_Forcible_Sex",
+      "field": "Non_Forcible_Sex",
+      "count": 16,
+      "year": "2025"
+    },
+    {
+      "label": "Kidnapping_Abduction",
+      "field": "Kidnapping_Abduction",
+      "count": 40,
+      "year": "2025"
+    },
+    {
+      "label": "Human_Trafficking",
+      "field": "Human_Trafficking",
+      "count": 5,
+      "year": "2025"
+    },
+    {
+      "label": "Viol_Of_No_Contact",
+      "field": "Viol_Of_No_Contact",
+      "count": 385,
+      "year": "2025"
+    },
+    {
+      "label": "Arson",
+      "field": "Arson",
+      "count": 17,
+      "year": "2025"
+    },
+    {
+      "label": "Bribery",
+      "field": "Bribery",
+      "count": 0,
+      "year": "2025"
+    },
+    {
+      "label": "Burglary",
+      "field": "Burglary",
+      "count": 351,
+      "year": "2025"
+    },
+    {
+      "label": "Counterfeiting_Forgery",
+      "field": "Counterfeiting_Forgery",
+      "count": 34,
+      "year": "2025"
+    },
+    {
+      "label": "Destruction_of_Property",
+      "field": "Destruction_of_Property",
+      "count": 1205,
+      "year": "2025"
+    },
+    {
+      "label": "Extortion_Blackmail",
+      "field": "Extortion_Blackmail",
+      "count": 6,
+      "year": "2025"
+    },
+    {
+      "label": "Robbery",
+      "field": "Robbery",
+      "count": 104,
+      "year": "2025"
+    },
+    {
+      "label": "Theft",
+      "field": "Theft",
+      "count": 2963,
+      "year": "2025"
+    },
+    {
+      "label": "Drug_Violations",
+      "field": "Drug_Violations",
+      "count": 535,
+      "year": "2025"
+    },
+    {
+      "label": "Gambling_Violations",
+      "field": "Gambling_Violations",
+      "count": 0,
+      "year": "2025"
+    },
+    {
+      "label": "Pornography",
+      "field": "Pornography",
+      "count": 6,
+      "year": "2025"
+    },
+    {
+      "label": "Prostitution",
+      "field": "Prostitution",
+      "count": 6,
+      "year": "2025"
+    },
+    {
+      "label": "Weapon_Law_Violation",
+      "field": "Weapon_Law_Violation",
+      "count": 108,
+      "year": "2025"
+    },
+    {
+      "label": "Animal_Cruelty",
+      "field": "Animal_Cruelty",
+      "count": 1,
+      "year": "2025"
+    }
+  ],
+  "priorYear": {
+    "year": "2024",
+    "total": 12378,
+    "population": 140400,
+    "ratePublished": 88.162393162,
+    "PrsnTotal": 3318,
+    "PrprtyTotal": 8378,
+    "SctyTotal": 682
+  },
+  "extracted": {
+    "2024": {
+      "IndexYear": "2024",
+      "county": "KING",
+      "Location": "Kent Police Department",
+      "Population": 140400,
+      "Total": 12378,
+      "Rate": 88.162393162,
+      "PrsnTotal": 3318,
+      "PrsnRate": 23.632478632,
+      "Murder": 7,
+      "Manslaughter": 0,
+      "Forcible_Sex": 137,
+      "Assault": 2622,
+      "Non_Forcible_Sex": 21,
+      "Kidnapping_Abduction": 48,
+      "Human_Trafficking": 4,
+      "Viol_Of_No_Contact": 479,
+      "PrprtyTotal": 8378,
+      "PrprtyRate": 59.672364672,
+      "Arson": 34,
+      "Bribery": 0,
+      "Burglary": 746,
+      "Counterfeiting_Forgery": 28,
+      "Destruction_of_Property": 2321,
+      "Extortion_Blackmail": 16,
+      "Robbery": 193,
+      "Theft": 5040,
+      "SctyTotal": 682,
+      "SctyRate": 4.8575498575,
+      "Drug_Violations": 507,
+      "Gambling_Violations": 0,
+      "Pornography": 12,
+      "Prostitution": 8,
+      "Weapon_Law_Violation": 155,
+      "Animal_Cruelty": 0
+    },
+    "2025": {
+      "IndexYear": "2025",
+      "county": "KING",
+      "Location": "Kent Police Department",
+      "Population": 140100,
+      "Total": 7619,
+      "Rate": 54.382583868,
+      "PrsnTotal": 2283,
+      "PrsnRate": 16.295503211,
+      "Murder": 1,
+      "Manslaughter": 0,
+      "Forcible_Sex": 116,
+      "Assault": 1720,
+      "Non_Forcible_Sex": 16,
+      "Kidnapping_Abduction": 40,
+      "Human_Trafficking": 5,
+      "Viol_Of_No_Contact": 385,
+      "PrprtyTotal": 4680,
+      "PrprtyRate": 33.40471092,
+      "Arson": 17,
+      "Bribery": 0,
+      "Burglary": 351,
+      "Counterfeiting_Forgery": 34,
+      "Destruction_of_Property": 1205,
+      "Extortion_Blackmail": 6,
+      "Robbery": 104,
+      "Theft": 2963,
+      "SctyTotal": 656,
+      "SctyRate": 4.6823697359,
+      "Drug_Violations": 535,
+      "Gambling_Violations": 0,
+      "Pornography": 6,
+      "Prostitution": 6,
+      "Weapon_Law_Violation": 108,
+      "Animal_Cruelty": 1
+    }
+  }
+}
