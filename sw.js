@@ -1,5 +1,5 @@
 /* CrimeStat service worker — caches the app shell only, never live data or geocode. */
-const VERSION = "crimestat-shell-v1";
+const VERSION = "crimestat-shell-v2";
 const SHELL = [
   "/",
   "/index.html",
@@ -86,10 +86,6 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (isLiveData(url)) return;
 
-  const accept = request.headers.get("accept") || "";
-  if (request.mode === "navigate" || accept.includes("text/html")) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-  event.respondWith(cacheFirst(request));
+  // Network-first for everything so a new deploy always shows up; cache is only an offline fallback.
+  event.respondWith(networkFirst(request));
 });
