@@ -620,6 +620,21 @@
     }
   }
 
+
+  function fitMapBounds(bounds, opts) {
+    if (!bounds || !map) return;
+    const options = opts || {};
+    const listOpen = options.listOpen || (document.getElementById("panel-nearby") && !document.getElementById("panel-nearby").hidden);
+    const bottom = listOpen ? 340 : 28;
+    map.invalidateSize();
+    map.fitBounds(bounds, {
+      paddingTopLeft: [28, 28],
+      paddingBottomRight: [28, bottom],
+      maxZoom: options.maxZoom || 12,
+      animate: false,
+    });
+  }
+
   function setCenter(lat, lng, label, opts) {
     const options = opts || {};
     const meters = options.radiusMeters != null ? options.radiusMeters : MILES50;
@@ -647,11 +662,11 @@
       }).addTo(map);
     }
     map.invalidateSize();
-    if (radiusCircle) {
-      map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 12, animate: false });
-    } else if (options.bounds) {
-      map.fitBounds(options.bounds, { padding: [28, 28], maxZoom: options.maxZoom || 12, animate: false });
-    }
+    const listOpen = options.openList || (document.getElementById("panel-nearby") && !document.getElementById("panel-nearby").hidden);
+    fitMapBounds(radiusCircle ? radiusCircle.getBounds() : options.bounds, {
+      maxZoom: options.maxZoom || 12,
+      listOpen,
+    });
     const covered = viewIntersectsCoverage();
     const radiusNote = meters === MILES50 ? "50-mile radius" : "selected radius";
     if (covered) {
@@ -834,6 +849,7 @@
       });
     }
     openSheet("nearby");
+    if (radiusCircle) fitMapBounds(radiusCircle.getBounds(), { maxZoom: 12, listOpen: true });
     window.__csNearby = { count: all.length, shown: shown.length, cities: [...new Set(visibleRegions().map((r) => r.id))] };
   }
 
