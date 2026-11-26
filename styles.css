@@ -241,11 +241,13 @@ a:hover { color: var(--accent-hover); }
 .leaflet-popup-content .popup-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
 .leaflet-popup.cs-annual-popup .leaflet-popup-content-wrapper {
+  min-width: min(272px, calc(100vw - 64px));
   max-width: min(300px, calc(100vw - 28px));
 }
 .leaflet-popup.cs-annual-popup .leaflet-popup-content {
   margin: 10px 12px 8px;
-  width: auto !important;
+  min-width: 248px;
+  width: 248px !important;
   max-height: min(42dvh, calc(100dvh - 280px));
   overflow-y: auto;
   overscroll-behavior: contain;
