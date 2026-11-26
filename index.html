@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>CrimeStat — Local Crime Map</title>
-  <meta name="description" content="Free crime map with official Spokane and Seattle public incident data and Kent Police Department annual totals reported to WASPC, shown as of each city’s as-of date, not real-time. Install it on your iPhone or Android home screen from this website.">
+  <meta name="description" content="Free crime map with official Spokane, Seattle, and Auburn public incident data and Kent Police Department annual totals reported to WASPC, shown as of each city’s as-of date, not real-time. Install it on your iPhone or Android home screen from this website.">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
@@ -83,10 +83,12 @@
       <div id="emptyState" class="empty-state" hidden>
         <p><strong>No public data feed for this area yet.</strong></p>
         <p>Official public data is available for Spokane and Seattle. Search a city to view it.</p>
+        <p id="recordsCta" class="records-cta">No block-level data published. Help get it: <a href="/records">request records from the local police department</a>.</p>
         <div class="empty-actions">
           <button type="button" id="jumpSpokane" class="primary">View Spokane</button>
           <button type="button" id="jumpSeattle" class="primary">View Seattle</button>
           <button type="button" id="jumpKent" class="primary" hidden>View Kent</button>
+          <button type="button" id="jumpAuburn" class="primary" hidden>View Auburn</button>
         </div>
       </div>
       <div class="map-controls">
@@ -130,6 +132,7 @@
       <li><button type="button" data-open="settings">Settings</button></li>
       <li><button type="button" data-open="layers">Crime layers</button></li>
       <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/records">Request records</a></li>
     </ul>
     <p class="drawer-label">Coming soon</p>
     <ul class="soon">
@@ -138,7 +141,7 @@
       <li><span>Community layer</span><em>Coming soon</em></li>
       <li><span>Near-miss reports</span><em>Coming soon</em></li>
     </ul>
-    <p class="drawer-note">Rape / sexual assault, domestic violence, and stalking are shown only as neighborhood totals, never as pins or addresses. Missing-person pins from a legal public source are not in this build yet.</p>
+    <p class="drawer-note">Rape / sexual assault, domestic violence, and stalking are shown only as area totals, never as pins or addresses. Auburn pin popups show official street addresses from Auburn Police Department public data.</p>
   </nav>
 
   <section id="panel-alerts" class="sheet" hidden aria-labelledby="alertsTitle">
@@ -165,8 +168,10 @@
       <li><button type="button" id="settingsSpokane">View Spokane data</button></li>
       <li><button type="button" id="settingsSeattle">View Seattle data</button></li>
       <li><button type="button" id="settingsKent" hidden>View Kent totals</button></li>
+      <li><button type="button" id="settingsAuburn" hidden>View Auburn data</button></li>
     </ul>
     <h3>About this data</h3>
+    <ul id="dataFreshness" class="freshness-list"></ul>
     <p id="settingsAbout">Official City of Spokane Police Department public records. This is Spokane-area public data as of its as-of date, not a real-time feed. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat.</p>
     <p>Time presets are measured from the data as-of date, not from today.</p>
     <p><a href="/privacy">Privacy</a></p>
@@ -176,12 +181,21 @@
   <section id="panel-layers" class="sheet" hidden aria-labelledby="layersTitle">
     <div class="sheet-handle"></div>
     <h2 id="layersTitle">Crime layers</h2>
+    <ul id="layersFreshness" class="freshness-list"></ul>
     <div class="layer-actions">
       <button type="button" id="layersAll">Default on</button>
       <button type="button" id="layersNone">All off</button>
     </div>
     <ul id="layerList" class="layer-list"></ul>
     <p class="drawer-note">Types marked “area only” are neighborhood totals — never a pin or address. Calls are 911/CAD events, not confirmed crimes, and start off.</p>
+    <button type="button" class="sheet-close">Close</button>
+  </section>
+
+  <section id="panel-nearby" class="sheet sheet-nearby" hidden aria-labelledby="nearbyTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="nearbyTitle">Crime near me</h2>
+    <p id="nearbySummary" class="nearby-empty">Incidents within 50 miles, using the selected time window and crime types.</p>
+    <ul id="nearbyList" class="nearby-list"></ul>
     <button type="button" class="sheet-close">Close</button>
   </section>
 

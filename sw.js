@@ -1,5 +1,5 @@
 /* CrimeStat service worker — caches the app shell only, never live data or geocode. */
-const VERSION = "crimestat-shell-v2";
+const VERSION = "crimestat-shell-v3";
 const SHELL = [
   "/",
   "/index.html",
@@ -7,6 +7,7 @@ const SHELL = [
   "/app.js",
   "/site.webmanifest",
   "/privacy",
+  "/records",
   "/favicon.ico",
   "/favicon-16.png",
   "/favicon-32.png",

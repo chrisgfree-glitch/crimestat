@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Request crime records — CrimeStat</title>
+  <meta name="description" content="How to request block-level public crime data from a Washington police agency for CrimeStat. CrimeStat does not file requests for you.">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("crimestat-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="legal-page">
+  <header>
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" width="36" height="36" alt="">
+      <span>CrimeStat</span>
+    </a>
+  </header>
+  <main class="legal-main">
+    <h1>Request block-level crime records</h1>
+    <p class="legal-updated">Last updated November 25, 2026.</p>
+    <p>Some cities only publish yearly totals, or no reusable incident feed, so CrimeStat cannot place pins on a block. You can ask the local police or sheriff for a public extract. CrimeStat does not file, sign, or submit records requests for you.</p>
+
+    <h2>What to ask for</h2>
+    <p>Request a machine-readable file (CSV or JSON) of reported crime incidents, under the Washington Public Records Act, chapter 42.56 RCW, with:</p>
+    <ul>
+      <li>Incident or report date and time</li>
+      <li>Offense or NIBRS code and offense type</li>
+      <li>Location at the 100-block, or official coordinates already blurred to the 100-block</li>
+      <li>A report number only if it does not identify a person</li>
+      <li>City, beat, or reporting district, if those fields exist</li>
+    </ul>
+    <p>Ask the agency to omit names, precise home addresses, dates of birth, and other personal identifiers, and to redact anything it treats as exempt. Then ask whether the same non-identifying fields can be published as a regular open data feed.</p>
+
+    <h2>How to send it</h2>
+    <ol>
+      <li>Identify the agency that actually polices the city (city police, a contracted sheriff, or both) and use that agency’s official public records portal or email.</li>
+      <li>Paste a short request that cites RCW 42.56 and lists the fields above. A template is at the bottom of this page.</li>
+      <li>Keep the date you sent it and any tracking number. If there is no acknowledgment in about five business days, send a brief status follow-up.</li>
+      <li>If the agency denies location data, ask whether a 100-block version can be released, and which exemption was applied.</li>
+    </ol>
+    <p>This page is a how-to, not legal advice. Full steps are also in the project’s public records playbook.</p>
+
+    <h2 id="agencies">Agencies without block-level pins on CrimeStat</h2>
+    <p>These places are in the Washington rollout and do not yet have a block-level CrimeStat incident map. Use the official records contact for the agency named here, or the city’s official website if the link is only a starting point.</p>
+    <ul class="records-agencies">
+      <li id="kent"><strong>Kent.</strong> Kent Police Department. CrimeStat shows 2025 annual totals only. Use the official Kent public records page on the city’s website.</li>
+      <li id="renton"><strong>Renton.</strong> Renton Police Department. Use the official public records page on the city’s website.</li>
+      <li id="everett"><strong>Everett.</strong> Everett Police Department. A feed exists but is not in CrimeStat pending a license check.</li>
+      <li id="tacoma"><strong>Tacoma.</strong> Tacoma Police Department. A feed exists but is not in CrimeStat pending a license check.</li>
+      <li id="vancouver"><strong>Vancouver.</strong> Vancouver Police Department.</li>
+      <li id="bellevue"><strong>Bellevue.</strong> Bellevue Police Department.</li>
+      <li id="federal-way"><strong>Federal Way.</strong> Federal Way Police Department.</li>
+      <li id="marysville"><strong>Marysville.</strong> Marysville Police Department.</li>
+      <li id="lynnwood"><strong>Lynnwood.</strong> Lynnwood Police Department.</li>
+      <li id="edmonds"><strong>Edmonds.</strong> Edmonds Police Department.</li>
+      <li id="shoreline"><strong>Shoreline.</strong> King County Sheriff’s Office (contract city). Ask for Shoreline incidents, not other contract cities, unless you also want those.</li>
+      <li id="lakewood"><strong>Lakewood.</strong> Lakewood Police Department.</li>
+      <li id="puyallup"><strong>Puyallup.</strong> Puyallup Police Department.</li>
+      <li id="longview"><strong>Longview.</strong> Longview Police Department.</li>
+      <li id="olympia"><strong>Olympia.</strong> Olympia Police Department.</li>
+      <li id="lacey"><strong>Lacey.</strong> Lacey Police Department.</li>
+      <li id="tumwater"><strong>Tumwater.</strong> Tumwater Police Department.</li>
+      <li id="bothell"><strong>Bothell.</strong> Bothell Police Department. A feed exists but is not in CrimeStat pending a license check.</li>
+      <li id="issaquah"><strong>Issaquah.</strong> Issaquah Police Department.</li>
+      <li id="woodinville"><strong>Woodinville.</strong> King County Sheriff’s Office (contract city).</li>
+      <li id="mill-creek"><strong>Mill Creek.</strong> Mill Creek Police Department, or the agency named on the city’s official site.</li>
+      <li id="mukilteo"><strong>Mukilteo.</strong> Mukilteo Police Department.</li>
+    </ul>
+    <p>Seattle, Spokane, and Auburn already have incident-level public data on the map. If a city is not listed, ask the local police department or county sheriff using the same field list.</p>
+
+    <h2>Short request template</h2>
+    <pre class="records-template">Subject: Public records request — block-level crime incidents (RCW 42.56)
+
+This is a request for public records under the Washington Public Records Act, chapter 42.56 RCW.
+
+Please provide a machine-readable copy (CSV or JSON) of reported crime incidents for [agency / city], for [date range, or “the most recent 12 months, and ongoing if available”], with these fields only:
+
+- incident or report date and time
+- offense or NIBRS code and offense type
+- location at the 100-block, or official coordinates already blurred to the 100-block
+- incident or report number, if it does not identify a person
+- city, beat, or reporting district, if available
+
+Please omit names, precise residential addresses, and other personal identifiers. Please also omit or redact any fields you determine are exempt, and release the remaining non-exempt fields.
+
+If a one-time extract is all that is available now, I also request that [agency] consider publishing the same non-identifying fields as a regularly updated open data feed, with stated reuse terms.
+
+If this request needs clarification or a time/cost estimate, please let me know.</pre>
+    <p>Replace the bracketed placeholders before you send this. Do not include anyone else’s name, phone number, or home address unless the agency requires a requester mailing address, in which case use your own.</p>
+    <p><a href="/">Back to the map</a></p>
+  </main>
+</body>
+</html>

@@ -23,5 +23,6 @@
     -122.22369,
     47.39233
   ],
-  "boundarySource": "https://gis-cityofkent.opendata.arcgis.com/datasets/7f6b7e4e518344a3b625a5b3b88f6e79_0"
+  "boundarySource": "https://gis-cityofkent.opendata.arcgis.com/datasets/7f6b7e4e518344a3b625a5b3b88f6e79_0",
+  "cadence": "annually (WASPC/NIBRS agency totals)"
 }

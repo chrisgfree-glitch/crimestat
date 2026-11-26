@@ -1,6 +1,8 @@
 /* CrimeStat — official Spokane PD snapshot (no demo incidents). */
 (() => {
   const MILES5 = 1609.344 * 5;
+  const MILES50 = 1609.344 * 50;
+  const NEAR_LIST_LIMIT = 50;
   const STORAGE_KEY = "crimestat-ui-v2";
   const OFF_BY_DEFAULT = new Set(["domestic_violence", "stalking", "shots_fired", "calls"]);
   const WINDOW_DAYS = { "30d": 30, "60d": 60, "90d": 90, "6m": 182, "1y": 365, "5y": 365 * 5 };
@@ -8,6 +10,7 @@
     spokane: { lat: 47.6588, lng: -117.426, label: "Spokane, Washington" },
     seattle: { lat: 47.6062, lng: -122.3321, label: "Seattle, Washington" },
     kent: { lat: 47.3900, lng: -122.2135, label: "Kent, Washington" },
+    auburn: { lat: 47.3073, lng: -122.2285, label: "Auburn, Washington" },
   };
 
   const LABELS = {
@@ -33,6 +36,35 @@
     calls: "Calls (911/CAD), not confirmed crimes",
   };
   const SENSITIVE = new Set(["rape", "domestic_violence", "stalking"]);
+  const LAYER_GROUPS = [
+    { id: "persons", heading: "Persons", types: ["assault", "rape", "battery", "robbery", "kidnapping", "domestic_violence", "stalking", "missing_persons"] },
+    { id: "property", heading: "Property", types: ["burglary_residential", "burglary_business", "theft", "home_invasion", "vandalism", "arson", "auto_theft", "fraud"] },
+    { id: "society", heading: "Society", types: ["drugs", "weapons", "shots_fired"] },
+  ];
+  const RECORDS_AGENCIES = {
+    kent: { name: "Kent Police Department", hash: "kent" },
+    renton: { name: "Renton Police Department", hash: "renton" },
+    everett: { name: "Everett Police Department", hash: "everett" },
+    tacoma: { name: "Tacoma Police Department", hash: "tacoma" },
+    vancouver: { name: "Vancouver Police Department", hash: "vancouver" },
+    bellevue: { name: "Bellevue Police Department", hash: "bellevue" },
+    "federal way": { name: "Federal Way Police Department", hash: "federal-way" },
+    marysville: { name: "Marysville Police Department", hash: "marysville" },
+    lynnwood: { name: "Lynnwood Police Department", hash: "lynnwood" },
+    edmonds: { name: "Edmonds Police Department", hash: "edmonds" },
+    shoreline: { name: "King County Sheriff’s Office", hash: "shoreline" },
+    lakewood: { name: "Lakewood Police Department", hash: "lakewood" },
+    puyallup: { name: "Puyallup Police Department", hash: "puyallup" },
+    longview: { name: "Longview Police Department", hash: "longview" },
+    olympia: { name: "Olympia Police Department", hash: "olympia" },
+    lacey: { name: "Lacey Police Department", hash: "lacey" },
+    tumwater: { name: "Tumwater Police Department", hash: "tumwater" },
+    bothell: { name: "Bothell Police Department", hash: "bothell" },
+    issaquah: { name: "Issaquah Police Department", hash: "issaquah" },
+    woodinville: { name: "King County Sheriff’s Office", hash: "woodinville" },
+    "mill creek": { name: "Mill Creek Police Department", hash: "mill-creek" },
+    mukilteo: { name: "Mukilteo Police Department", hash: "mukilteo" },
+  };
 
   const state = {
     time: "snapshot",
@@ -114,7 +146,20 @@
     return LABELS[type] || type;
   }
 
+  function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[ch]));
+  }
+
   function pinNoteFor(region) {
+    if (region.meta && region.meta.showSourceAddress) {
+      return "Street address is as published in Auburn Police Department public data.";
+    }
     if (region.id === "seattle") {
       return "Location is the official 100-block or MCPP neighborhood, not a street address.";
     }
@@ -150,6 +195,37 @@
     return state.regions.find((r) => r.id === id) || null;
   }
 
+  function regionDisplayName(region) {
+    if (!region) return "";
+    if (region.id === "spokane") return "Spokane";
+    if (region.id === "seattle") return "Seattle";
+    if (region.id === "kent") return "Kent";
+    if (region.id === "auburn") return "Auburn";
+    return (region.meta && (region.meta.id || region.id)) || region.id;
+  }
+
+  function formatAsOf(iso) {
+    const ms = parseYmdUtc(iso);
+    if (!Number.isFinite(ms)) return iso || "";
+    return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  }
+
+  function freshnessLine(region) {
+    const asOf = formatAsOf(region.meta && region.meta.asOf);
+    const cadence = (region.meta && region.meta.cadence) || "not a real-time feed";
+    return asOf ? `Data as of ${asOf} · updated ${cadence}` : `Updated ${cadence}`;
+  }
+
+  function syncFreshness() {
+    const items = state.regions.map((r) =>
+      `<li><strong>${regionDisplayName(r)}</strong>${escapeHtml(freshnessLine(r))}</li>`
+    ).join("");
+    for (const id of ["dataFreshness", "layersFreshness"]) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = items;
+    }
+  }
+
   function radiusBounds(lat, lng, meters) {
     const dLat = meters / 111320;
     const dLng = meters / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
@@ -159,8 +235,8 @@
   function regionInView(region) {
     const cov = regionBounds(region);
     if (!cov) return false;
-    if (state.center) {
-      const around = radiusBounds(state.center.lat, state.center.lng, MILES5);
+    if (state.center && state.center.radiusMeters) {
+      const around = radiusBounds(state.center.lat, state.center.lng, state.center.radiusMeters);
       if (cov.intersects(around) || cov.contains([state.center.lat, state.center.lng])) return true;
     }
     if (map) {
@@ -184,8 +260,9 @@
     if (!regions.length) return;
     banner.textContent = regions.map((r) => {
       const label = r.meta && r.meta.label || "";
-      if (/not a real-time|not real-time/i.test(label)) return label;
-      return `${label} This is public data as of that date, not a real-time feed.`;
+      const fresh = freshnessLine(r);
+      if (/not a real-time|not real-time|paused/i.test(label)) return `${label} ${fresh}`;
+      return `${label} This is public data as of that date, not a real-time feed. ${fresh}`;
     }).join(" ");
     refreshLocPrecision();
   }
@@ -339,19 +416,23 @@
         }
       } else {
         for (const row of region.offenses.points || []) {
-          const [t, n, d, x, y] = row;
+          const [t, n, d, x, y, addr] = row;
           const type = types[t];
           if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
           const feat = features[n];
           const name = feat ? feat.properties.name : "Unknown neighborhood";
           const label = typeLabel(region, type);
+          const showAddr = region.meta && region.meta.showSourceAddress && addr;
+          const body = showAddr
+            ? `${escapeHtml(addr)}<br>${formatDay(region, d)}`
+            : `${escapeHtml(name)}<br>${formatDay(region, d)}`;
           const marker = L.marker([y / 10000, x / 10000], {
             icon: iconFor(type),
             title: label,
             keyboard: false,
           }).bindPopup(popupHtml(
             label,
-            `${name}<br>${formatDay(region, d)}`,
+            body,
             pinNoteFor(region)
           ));
           pinLayer.addLayer(marker);
@@ -441,6 +522,10 @@
     if (prior && prior.year) {
       body += `<p class="cs-annual-prior">${prior.year} from the same official file — Total: ${fmt(prior.total)}; persons: ${fmt(prior.PrsnTotal)}; property: ${fmt(prior.PrprtyTotal)}; society: ${fmt(prior.SctyTotal)}.</p>`;
     }
+    const agency = RECORDS_AGENCIES[(region.id || "").toLowerCase()];
+    if (agency) {
+      body += `<p class="cs-annual-cta">No block-level data published. Help get it: <a href="/records#${agency.hash}">request records from ${escapeHtml(agency.name)}</a>.</p>`;
+    }
     body += "</div>";
     const title = (region.meta && (region.meta.cardTitle || region.meta.label)) || "Annual totals";
     badgeMarker(
@@ -485,54 +570,101 @@
     }
   }
 
+  const PRECISION_PHRASES = [
+    "Auburn pins show official street addresses from Auburn Police Department public data.",
+    "Kent is city-level annual totals only.",
+    "Other covered cities use neighborhood or 100-block locations, not street addresses.",
+    "Neighborhood-level official data only.",
+    "City-level annual totals only.",
+  ];
+
   function locPrecisionNote() {
-    return visibleRegions().some((r) => r.kind === "annual-summary")
-      ? "City-level annual totals only."
-      : "Neighborhood-level official data only.";
+    const regions = visibleRegions();
+    const notes = [];
+    if (regions.some((r) => r.meta && r.meta.showSourceAddress)) {
+      notes.push("Auburn pins show official street addresses from Auburn Police Department public data.");
+    }
+    if (regions.some((r) => r.kind === "annual-summary")) {
+      notes.push("Kent is city-level annual totals only.");
+    }
+    if (regions.some((r) => !(r.meta && r.meta.showSourceAddress) && r.kind !== "annual-summary")) {
+      notes.push(notes.length
+        ? "Other covered cities use neighborhood or 100-block locations, not street addresses."
+        : "Neighborhood-level official data only.");
+    }
+    return notes.join(" ") || "Neighborhood-level official data only.";
   }
 
   function refreshLocPrecision() {
     const el = document.getElementById("locBar");
     if (!el) return;
-    const text = el.textContent || "";
-    if (!/Neighborhood-level official data only|City-level annual totals only/.test(text)) return;
-    el.textContent = text
-      .replace(/Neighborhood-level official data only\.?/, locPrecisionNote())
-      .replace(/City-level annual totals only\.?/, locPrecisionNote());
+    let text = el.textContent || "";
+    if (!PRECISION_PHRASES.some((p) => text.includes(p.replace(/\.$/, "")))) return;
+    for (const phrase of PRECISION_PHRASES) {
+      text = text.split(phrase).join("");
+      text = text.split(phrase.replace(/\.$/, "")).join("");
+    }
+    text = text.replace(/\s+/g, " ").replace(/\s+\./g, ".").trim();
+    const note = locPrecisionNote();
+    el.textContent = text ? `${text.replace(/\.$/, "")}. ${note}` : note;
   }
 
-  function setCenter(lat, lng, label) {
-    state.center = { lat, lng, label };
-    if (radiusCircle) map.removeLayer(radiusCircle);
-    radiusCircle = L.circle([lat, lng], {
-      radius: MILES5,
-      color: "#111827",
-      weight: 1.5,
-      dashArray: "6 6",
-      fillColor: "#3b82f6",
-      fillOpacity: 0.05,
-      interactive: false,
-    }).addTo(map);
-    if (userMarker) map.removeLayer(userMarker);
-    userMarker = L.circleMarker([lat, lng], {
-      radius: 7,
-      color: "#fff",
-      weight: 2,
-      fillColor: "#2563eb",
-      fillOpacity: 1,
-    }).addTo(map);
+  function clearCenterDecorations() {
+    if (radiusCircle) {
+      map.removeLayer(radiusCircle);
+      radiusCircle = null;
+    }
+    if (userMarker) {
+      map.removeLayer(userMarker);
+      userMarker = null;
+    }
+  }
+
+  function setCenter(lat, lng, label, opts) {
+    const options = opts || {};
+    const meters = options.radiusMeters != null ? options.radiusMeters : MILES50;
+    const showCircle = options.circle !== false && meters > 0;
+    state.center = { lat, lng, label, radiusMeters: meters };
+    clearCenterDecorations();
+    if (showCircle) {
+      radiusCircle = L.circle([lat, lng], {
+        radius: meters,
+        color: "#111827",
+        weight: 1.5,
+        dashArray: "6 6",
+        fillColor: "#3b82f6",
+        fillOpacity: 0.05,
+        interactive: false,
+      }).addTo(map);
+    }
+    if (options.marker !== false) {
+      userMarker = L.circleMarker([lat, lng], {
+        radius: 7,
+        color: "#fff",
+        weight: 2,
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+      }).addTo(map);
+    }
     map.invalidateSize();
-    map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 14, animate: false });
+    if (radiusCircle) {
+      map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 12, animate: false });
+    } else if (options.bounds) {
+      map.fitBounds(options.bounds, { padding: [28, 28], maxZoom: options.maxZoom || 12, animate: false });
+    }
     const covered = viewIntersectsCoverage();
+    const radiusNote = meters === MILES50 ? "50-mile radius" : "selected radius";
     if (covered) {
       setLocMessage((label ? `Centered near ${label}` : "Centered here") +
-        " · default view is a 5-mile radius (zoom out to see more). " + locPrecisionNote());
+        ` · ${radiusNote} (zoom out to see more). ` + locPrecisionNote());
     } else {
       setLocMessage((label ? `Centered near ${label}. ` : "") +
         "No public data feed for this area yet.");
+      updateRecordsCta(label || "");
     }
     render();
     refreshLocPrecision();
+    if (options.openList) openNearbyList();
   }
 
   function showRegion(id) {
@@ -612,52 +744,243 @@
     }).sort((a, b) => a.meters - b.meters);
   }
 
-  // Nearby me: geolocation stays in the browser. It is not sent to a server or stored.
-  function locateUser() {
-    if (!navigator.geolocation) {
-      setLocMessage("This browser can’t share a location. Search an address or ZIP instead.");
+  function formatMiles(meters) {
+    const miles = meters / 1609.344;
+    if (miles < 0.1) return "under 0.1 mi";
+    return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
+  }
+
+  function incidentsNear(lat, lng, meters) {
+    const out = [];
+    for (const region of state.regions) {
+      if (region.kind === "annual-summary" || !region.offenses) continue;
+      const types = region.meta.types || state.types;
+      const features = (region.neighborhoods && region.neighborhoods.features) || [];
+      for (const row of region.offenses.points || []) {
+        const [t, n, d, x, y, addr] = row;
+        const type = types[t];
+        if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+        const ilat = y / 10000;
+        const ilng = x / 10000;
+        const dist = haversineMeters(lat, lng, ilat, ilng);
+        if (dist > meters) continue;
+        const feat = features[n];
+        const place = (region.meta && region.meta.showSourceAddress && addr)
+          ? addr
+          : (feat && feat.properties && feat.properties.name) || regionDisplayName(region);
+        out.push({
+          regionId: region.id,
+          type,
+          label: typeLabel(region, type),
+          date: formatDay(region, d),
+          place,
+          lat: ilat,
+          lng: ilng,
+          dist,
+        });
+      }
+    }
+    out.sort((a, b) => a.dist - b.dist);
+    return out;
+  }
+
+  function openNearbyList(lat, lng, meters) {
+    const panel = document.getElementById("panel-nearby");
+    const list = document.getElementById("nearbyList");
+    const summary = document.getElementById("nearbySummary");
+    if (!panel || !list || !summary) return;
+    const center = lat != null ? { lat, lng } : state.center;
+    const radius = meters || (center && center.radiusMeters) || MILES50;
+    if (!center) {
+      summary.textContent = "Turn on location or search a place to see nearby incidents.";
+      list.innerHTML = "";
+      openSheet("nearby");
       return;
     }
-    setLocMessage("Asking for your location…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setCenter(lat, lng, "you");
-        const ranked = neighborhoodsByDistance(lat, lng);
-        const closest = ranked.filter((n) => n.meters <= MILES5).slice(0, 5);
-        if (closest.length) {
-          const names = closest.map((n) => n.name).join(", ");
-          setLocMessage(`Showing neighborhoods closest to you: ${names}. Neighborhood areas only — no addresses.`);
-        } else if (state.inCoverage) {
-          const names = ranked.slice(0, 5).map((n) => n.name).join(", ");
-          setLocMessage(`Showing neighborhoods closest to you: ${names}. Neighborhood areas only — no addresses.`);
-        } else {
-          setLocMessage("No public data feed near you yet. Nothing was sent or stored. Search an address or view Spokane.");
-        }
-      },
-      (err) => {
-        if (err && err.code === 1) {
-          setLocMessage("Location is off. Search an address or ZIP, or view Spokane.");
-        } else {
-          setLocMessage("Couldn’t get your location. Search an address or ZIP, or view Spokane.");
-        }
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+    const all = incidentsNear(center.lat, center.lng, radius);
+    const shown = all.slice(0, NEAR_LIST_LIMIT);
+    if (!all.length) {
+      summary.textContent = viewIntersectsCoverage()
+        ? "No incidents in the selected types and time window within 50 miles."
+        : "No public incident feed within 50 miles. Search a city or use the records guide.";
+      list.innerHTML = "";
+    } else {
+      summary.textContent = all.length > shown.length
+        ? `Showing the nearest ${shown.length} of ${all.length.toLocaleString()} incidents within 50 miles.`
+        : `${all.length.toLocaleString()} incident${all.length === 1 ? "" : "s"} within 50 miles.`;
+      list.innerHTML = shown.map((item, i) => (
+        `<li><button type="button" data-near="${i}"><span class="nearby-type">${escapeHtml(item.label)}</span>` +
+        `<span class="nearby-meta">${escapeHtml(item.place)} · ${escapeHtml(item.date)} · ${formatMiles(item.dist)}</span></button></li>`
+      )).join("");
+      list.querySelectorAll("[data-near]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const item = shown[Number(btn.dataset.near)];
+          if (!item) return;
+          map.setView([item.lat, item.lng], 16, { animate: false });
+          pinLayer.eachLayer((layer) => {
+            const ll = layer.getLatLng && layer.getLatLng();
+            if (ll && Math.abs(ll.lat - item.lat) < 0.00015 && Math.abs(ll.lng - item.lng) < 0.00015) {
+              layer.openPopup();
+            }
+          });
+        });
+      });
+    }
+    openSheet("nearby");
+    window.__csNearby = { count: all.length, shown: shown.length, cities: [...new Set(visibleRegions().map((r) => r.id))] };
+  }
+
+  function updateRecordsCta(query) {
+    const el = document.getElementById("recordsCta");
+    if (!el) return;
+    const q = String(query || "").toLowerCase();
+    let hit = null;
+    for (const [key, agency] of Object.entries(RECORDS_AGENCIES)) {
+      if (q.includes(key)) { hit = agency; break; }
+    }
+    if (hit) {
+      el.innerHTML = `No block-level data published. Help get it: <a href="/records#${hit.hash}">request records from ${escapeHtml(hit.name)}</a>.`;
+    } else {
+      el.innerHTML = `No block-level data published. Help get it: <a href="/records">request records from the local police department</a>.`;
+    }
+  }
+
+  function showDefaultCoverage() {
+    const cov = coverageBounds();
+    if (!cov) return;
+    const mid = cov.getCenter();
+    state.center = { lat: mid.lat, lng: mid.lng, label: null, radiusMeters: 0 };
+    clearCenterDecorations();
+    map.invalidateSize();
+    map.fitBounds(cov, { padding: [28, 28], maxZoom: 9, animate: false });
+    setLocMessage("Showing official public data for areas with a feed. Tap Nearby me to center on your location, or search a city.");
+    render();
+    refreshLocPrecision();
+    window.__csDefaultView = true;
+  }
+
+  function applyNearby(lat, lng, label) {
+    setCenter(lat, lng, label || "you", { radiusMeters: MILES50, openList: true });
+    const ranked = neighborhoodsByDistance(lat, lng);
+    const nearbyNames = [...new Set(visibleRegions().map(regionDisplayName).filter(Boolean))];
+    if (nearbyNames.length) {
+      setLocMessage(`Showing official data within 50 miles: ${nearbyNames.join(", ")}. ` + locPrecisionNote());
+    } else {
+      setLocMessage("No public data feed within 50 miles. Nothing was sent or stored. Search a city, or browse the default map.");
+      updateRecordsCta(label || "");
+      showDefaultCoverage();
+    }
+    openNearbyList(lat, lng, MILES50);
+  }
+
+  // Nearby me: geolocation stays in the browser. It is not sent to a server or stored.
+  // Auto-use on first load only if the browser already granted permission. No prompt on load.
+  function locateUser(fromGesture) {
+    if (!navigator.geolocation) {
+      setLocMessage("This browser can’t share a location. Search an address or ZIP instead.");
+      if (fromGesture) showDefaultCoverage();
+      return Promise.resolve(false);
+    }
+    if (fromGesture) setLocMessage("Asking for your location…");
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          applyNearby(pos.coords.latitude, pos.coords.longitude, "you");
+          resolve(true);
+        },
+        (err) => {
+          if (fromGesture) {
+            if (err && err.code === 1) {
+              setLocMessage("Location is off. Search an address or ZIP, or browse the map.");
+            } else {
+              setLocMessage("Couldn’t get your location. Search an address or ZIP, or browse the map.");
+            }
+            showDefaultCoverage();
+          }
+          resolve(false);
+        },
+        { enableHighAccuracy: true, timeout: fromGesture ? 12000 : 8000, maximumAge: fromGesture ? 0 : 60000 }
+      );
+    });
+  }
+
+  async function tryAutoLocate() {
+    try {
+      if (!navigator.geolocation) return false;
+      if (navigator.permissions && navigator.permissions.query) {
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        if (status.state !== "granted") return false;
+      } else {
+        return false;
+      }
+      return locateUser(false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function typeHasData(t) {
+    return state.regions.some((region) => {
+      if (region.kind === "annual-summary") return false;
+      const types = (region.meta && region.meta.types) || state.types;
+      const idx = types.indexOf(t);
+      if (idx < 0) return false;
+      const pts = (region.offenses && region.offenses.points) || [];
+      if (pts.some((row) => row[0] === idx)) return true;
+      const areas = (region.offenses && region.offenses.areas) || [];
+      return areas.some((row) => row[0] === idx);
+    });
+  }
+
+  function groupState(types) {
+    const present = types.filter((t) => state.types.includes(t));
+    const on = present.filter((t) => state.layers[t]);
+    return { present, all: present.length > 0 && on.length === present.length, some: on.length > 0 && on.length < present.length };
   }
 
   function buildLayerList() {
     const list = document.getElementById("layerList");
-    const items = state.types.map((t) => {
+    if (!list) return;
+    const items = [];
+    const used = new Set();
+    function typeRow(t) {
       const svg = state.svg[t] || "";
       const meta = SENSITIVE.has(t) ? '<span class="meta">Area only</span>' : "";
-      const empty = (t === "home_invasion" || t === "missing_persons")
-        ? '<span class="meta">None in snapshot</span>' : "";
-      return `<li><label><span class="layer-icon">${svg}</span><input type="checkbox" data-layer="${t}" ${state.layers[t] ? "checked" : ""}> <span>${LABELS[t]}</span>${meta}${empty}</label></li>`;
-    });
+      const empty = typeHasData(t) ? "" : '<span class="meta">None in snapshot</span>';
+      return `<li><label><span class="layer-icon">${svg}</span><input type="checkbox" data-layer="${t}" ${state.layers[t] ? "checked" : ""}> <span>${LABELS[t] || t}</span>${meta}${empty}</label></li>`;
+    }
+    for (const group of LAYER_GROUPS) {
+      const st = groupState(group.types);
+      if (!st.present.length) continue;
+      items.push(
+        `<li class="layer-group"><label><input type="checkbox" data-group="${group.id}" ${st.all ? "checked" : ""}> <span>${group.heading}</span></label></li>`
+      );
+      for (const t of st.present) {
+        used.add(t);
+        items.push(typeRow(t));
+      }
+    }
+    for (const t of state.types) {
+      if (!used.has(t)) items.push(typeRow(t));
+    }
     items.push(`<li><label><span class="layer-icon">${state.svg.calls || ""}</span><input type="checkbox" data-layer="calls" ${state.layers.calls ? "checked" : ""}> <span>${LABELS.calls}</span><span class="meta">Starts off</span></label></li>`);
     list.innerHTML = items.join("");
+    list.querySelectorAll("[data-group]").forEach((box) => {
+      const group = LAYER_GROUPS.find((g) => g.id === box.dataset.group);
+      if (!group) return;
+      const st = groupState(group.types);
+      box.indeterminate = st.some;
+      box.addEventListener("change", () => {
+        const on = box.checked;
+        for (const t of group.types) {
+          if (state.types.includes(t)) state.layers[t] = on;
+        }
+        saveState();
+        syncControls();
+        render();
+        if (state.center && state.center.radiusMeters) openNearbyList();
+      });
+    });
   }
 
   function syncControls() {
@@ -674,7 +997,7 @@
 
   const backdrop = document.getElementById("backdrop");
   const drawer = document.getElementById("drawer");
-  const sheets = ["alerts", "settings", "layers", "download"].map((id) => document.getElementById(`panel-${id}`));
+  const sheets = ["alerts", "settings", "layers", "download", "nearby"].map((id) => document.getElementById(`panel-${id}`));
 
   function closeAll() {
     drawer.hidden = true;
@@ -698,11 +1021,12 @@
     document.getElementById("menuBtn").setAttribute("aria-expanded", "true");
   }
 
-  function openSheet(id) {
+  function openSheet(id, opts) {
     drawer.hidden = true;
     document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
     sheets.forEach((el) => { el.hidden = el.id !== `panel-${id}`; });
-    backdrop.hidden = false;
+    // Keep the map visible under the nearby list so pins stay on screen with no extra tap.
+    backdrop.hidden = id === "nearby" || (opts && opts.backdrop === false);
   }
 
   const THEME_KEY = "crimestat-theme";
@@ -946,6 +1270,8 @@
         saveState();
         syncControls();
         render();
+        const nearby = document.getElementById("panel-nearby");
+        if (nearby && !nearby.hidden && state.center && state.center.radiusMeters) openNearbyList();
       });
     });
     document.querySelectorAll("[data-view]").forEach((btn) => {
@@ -957,8 +1283,8 @@
       });
     });
     document.getElementById("layersBtn").addEventListener("click", () => openSheet("layers"));
-    document.getElementById("locateBtn").addEventListener("click", locateUser);
-    document.getElementById("settingsLocate").addEventListener("click", () => { closeAll(); locateUser(); });
+    document.getElementById("locateBtn").addEventListener("click", () => locateUser(true));
+    document.getElementById("settingsLocate").addEventListener("click", () => { closeAll(); locateUser(true); });
     document.getElementById("settingsSpokane").addEventListener("click", () => { closeAll(); showSpokane(); });
     document.getElementById("jumpSpokane").addEventListener("click", showSpokane);
     const jumpSeattle = document.getElementById("jumpSeattle");
@@ -969,6 +1295,10 @@
     if (jumpKent) jumpKent.addEventListener("click", () => showRegion("kent"));
     const settingsKent = document.getElementById("settingsKent");
     if (settingsKent) settingsKent.addEventListener("click", () => { closeAll(); showRegion("kent"); });
+    const jumpAuburn = document.getElementById("jumpAuburn");
+    if (jumpAuburn) jumpAuburn.addEventListener("click", () => showRegion("auburn"));
+    const settingsAuburn = document.getElementById("settingsAuburn");
+    if (settingsAuburn) settingsAuburn.addEventListener("click", () => { closeAll(); showRegion("auburn"); });
 
     document.getElementById("layerList").addEventListener("change", async (e) => {
       const box = e.target.closest("[data-layer]");
@@ -979,6 +1309,8 @@
         await ensureCalls();
       }
       render();
+        const nearby = document.getElementById("panel-nearby");
+        if (nearby && !nearby.hidden && state.center && state.center.radiusMeters) openNearbyList();
     });
     document.getElementById("layersAll").addEventListener("click", () => {
       for (const t of state.types) state.layers[t] = !OFF_BY_DEFAULT.has(t);
@@ -1032,6 +1364,10 @@
         showRegion("kent");
         return;
       }
+      if (!hit && /\bauburn\b/i.test(q)) {
+        showRegion("auburn");
+        return;
+      }
       if (!hit) {
         setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
         return;
@@ -1041,6 +1377,7 @@
       if (/spokane/i.test(q)) showSpokane();
       else if (/seattle/i.test(q)) showRegion("seattle");
       else if (/\bkent\b/i.test(q)) showRegion("kent");
+      else if (/\bauburn\b/i.test(q)) showRegion("auburn");
       else setLocMessage("Address lookup failed. Wait a moment and try again.");
     }
   }
@@ -1126,13 +1463,40 @@
       });
     } catch (_) { /* optional */ }
 
-    if (findRegion("kent")) {
-      const jk = document.getElementById("jumpKent");
-      const sk = document.getElementById("settingsKent");
-      if (jk) jk.hidden = false;
-      if (sk) sk.hidden = false;
-      const emptyCopy = document.querySelector("#emptyState p:nth-of-type(2)");
-      if (emptyCopy) emptyCopy.textContent = "Official public data is available for Spokane, Seattle, and Kent. Search a city to view it.";
+    try {
+      const [aMeta, aNbh, aOff] = await Promise.all([
+        fetchJson("/data/auburn/meta.json"),
+        fetchJson("/data/auburn/neighborhoods.json"),
+        fetchJson("/data/auburn/offenses.json"),
+      ]);
+      state.regions.push({
+        id: "auburn",
+        kind: "incidents",
+        meta: aMeta,
+        neighborhoods: aNbh,
+        offenses: aOff,
+        calls: null,
+      });
+    } catch (_) { /* optional */ }
+
+    const coveredNames = [];
+    for (const [id, jumpId, settingsId, name] of [
+      ["seattle", "jumpSeattle", "settingsSeattle", "Seattle"],
+      ["kent", "jumpKent", "settingsKent", "Kent"],
+      ["auburn", "jumpAuburn", "settingsAuburn", "Auburn"],
+    ]) {
+      if (!findRegion(id)) continue;
+      const jump = document.getElementById(jumpId);
+      const settings = document.getElementById(settingsId);
+      if (jump) jump.hidden = false;
+      if (settings) settings.hidden = false;
+      coveredNames.push(name);
+    }
+    const emptyCopy = document.querySelector("#emptyState p:nth-of-type(2)");
+    if (emptyCopy) {
+      const list = ["Spokane", ...coveredNames];
+      const listed = list.length === 1 ? list[0] : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+      emptyCopy.textContent = `Official public data is available for ${listed}. Search a city to view it.`;
     }
 
     document.getElementById("asOfBanner").textContent =
@@ -1144,21 +1508,25 @@
       return [label, note].filter(Boolean).join(" ");
     });
     document.getElementById("settingsAbout").textContent =
-      `${aboutBits.join(" ")} Locations are shown at neighborhood or city level only. Street addresses are not published on CrimeStat.`;
+      `${aboutBits.join(" ")} Auburn pin popups show official street addresses from Auburn Police Department public data. In other covered cities, locations are shown at neighborhood, 100-block, or city level only.`;
 
     for (const region of state.regions) {
       if (region.neighborhoods) nbhLayer.addData(region.neighborhoods);
     }
     buildLayerList();
     syncControls();
-    setBootState("ready");
+    syncFreshness();
 
     const params = new URLSearchParams(location.search);
     const q = (params.get("q") || params.get("city") || "").trim();
     if (q) {
       document.getElementById("searchInput").value = q;
       await runSearch(q);
+    } else {
+      const located = await tryAutoLocate();
+      if (!located) showDefaultCoverage();
     }
+    setBootState("ready");
   }
 
   document.getElementById("bootRetry")?.addEventListener("click", () => {
