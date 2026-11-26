@@ -240,6 +240,53 @@ a:hover { color: var(--accent-hover); }
 .leaflet-popup-content { font-size: 13.5px; line-height: 1.45; margin: 12px 14px; }
 .leaflet-popup-content .popup-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-popup.cs-annual-popup .leaflet-popup-content-wrapper {
+  max-width: min(300px, calc(100vw - 28px));
+}
+.leaflet-popup.cs-annual-popup .leaflet-popup-content {
+  margin: 10px 12px 8px;
+  width: auto !important;
+  max-height: min(42dvh, calc(100dvh - 280px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.leaflet-popup.cs-annual-popup .leaflet-popup-content > strong {
+  display: block;
+  padding-right: 18px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.leaflet-popup.cs-annual-popup .leaflet-popup-close-button {
+  z-index: 2;
+}
+.cs-annual-card { font-size: 13px; line-height: 1.35; }
+.cs-annual-total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 2px;
+}
+.cs-annual-group h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cs-annual-group h3 span { font-variant-numeric: tabular-nums; color: var(--ink); }
+.cs-annual-group ul { list-style: none; margin: 0; padding: 0; }
+.cs-annual-group li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1px 0;
+}
+.cs-annual-n { font-variant-numeric: tabular-nums; font-weight: 600; }
+.cs-annual-prior { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 .leaflet-control-layers {
   background: var(--control-bg) !important;
   color: var(--ink);

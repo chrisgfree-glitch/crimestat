@@ -184,9 +184,10 @@
     if (!regions.length) return;
     banner.textContent = regions.map((r) => {
       const label = r.meta && r.meta.label || "";
-      if (/not a real-time/i.test(label)) return label;
+      if (/not a real-time|not real-time/i.test(label)) return label;
       return `${label} This is public data as of that date, not a real-time feed.`;
     }).join(" ");
+    refreshLocPrecision();
   }
 
   function setLocMessage(text) {
@@ -244,7 +245,7 @@
 
     const heat = [];
 
-    function badgeMarker(latlng, html, popupTitle, popupBody, popupNote, borderColor) {
+    function badgeMarker(latlng, html, popupTitle, popupBody, popupNote, borderColor, popupOpts) {
       const icon = L.divIcon({
         className: "cs-badge-wrap",
         html: `<div class="nbh-badge" style="border-color:${borderColor}">${html}</div>`,
@@ -252,7 +253,7 @@
         iconAnchor: [20, 12],
       });
       return L.marker(latlng, { icon, keyboard: false, zIndexOffset: 200 })
-        .bindPopup(popupHtml(popupTitle, popupBody, popupNote));
+        .bindPopup(popupHtml(popupTitle, popupBody, popupNote), popupOpts || {});
     }
 
     function centroidOf(feat) {
@@ -364,6 +365,54 @@
     }
   }
 
+  const ANNUAL_GROUPS = [
+    {
+      heading: "Persons",
+      totalField: "PrsnTotal",
+      fields: [
+        ["Murder", "Murder"],
+        ["Manslaughter", "Manslaughter"],
+        ["Forcible_Sex", "Sex offenses (forcible)"],
+        ["Assault", "Assault"],
+        ["Non_Forcible_Sex", "Sex offenses (non-forcible)"],
+        ["Kidnapping_Abduction", "Kidnapping / abduction"],
+        ["Human_Trafficking", "Human trafficking"],
+        ["Viol_Of_No_Contact", "No-contact order violations"],
+      ],
+    },
+    {
+      heading: "Property",
+      totalField: "PrprtyTotal",
+      fields: [
+        ["Arson", "Arson"],
+        ["Bribery", "Bribery"],
+        ["Burglary", "Burglary"],
+        ["Counterfeiting_Forgery", "Counterfeiting / forgery"],
+        ["Destruction_of_Property", "Vandalism / property damage"],
+        ["Extortion_Blackmail", "Extortion / blackmail"],
+        ["Robbery", "Robbery"],
+        ["Theft", "Theft"],
+      ],
+    },
+    {
+      heading: "Society",
+      totalField: "SctyTotal",
+      fields: [
+        ["Drug_Violations", "Drug violations"],
+        ["Gambling_Violations", "Gambling violations"],
+        ["Pornography", "Pornography"],
+        ["Prostitution", "Prostitution"],
+        ["Weapon_Law_Violation", "Weapon law violations"],
+        ["Animal_Cruelty", "Animal cruelty"],
+      ],
+    },
+  ];
+
+  function annualFieldCount(rows, field) {
+    const row = (rows || []).find((r) => r.field === field);
+    return row && row.count != null ? Number(row.count) : null;
+  }
+
   function renderAnnualSummary(region, badgeMarker, centroidOf) {
     const features = (region.neighborhoods && region.neighborhoods.features) || [];
     const summary = region.summary || {};
@@ -376,24 +425,40 @@
         interactive: false,
       }).addTo(areaLayer);
     }
-    const groups = rows.filter((row) => /Total/i.test(row.label) || /PrsnTotal|PrprtyTotal|SctyTotal/.test(row.field || ""));
-    const details = rows.filter((row) => !groups.includes(row));
+    const fmt = (n) => Number(n).toLocaleString();
+    let body = `<div class="cs-annual-card"><div class="cs-annual-total">Total: ${fmt(summary.total)}</div>`;
+    for (const group of ANNUAL_GROUPS) {
+      const groupTotal = annualFieldCount(rows, group.totalField);
+      body += `<div class="cs-annual-group"><h3>${group.heading}${groupTotal != null ? ` <span>${fmt(groupTotal)}</span>` : ""}</h3><ul>`;
+      for (const [field, label] of group.fields) {
+        const count = annualFieldCount(rows, field);
+        if (count == null) continue;
+        body += `<li><span>${label}</span><span class="cs-annual-n">${fmt(count)}</span></li>`;
+      }
+      body += "</ul></div>";
+    }
     const prior = summary.priorYear;
-    let body = groups.map((row) => `${row.label}: ${Number(row.count).toLocaleString()}`).join("<br>");
-    if (details.length) {
-      body += "<br><br>" + details.map((row) => `${row.label}: ${Number(row.count).toLocaleString()}`).join("<br>");
-    }
     if (prior && prior.year) {
-      body += `<br><br>${prior.year} from the same official file — Total: ${Number(prior.total).toLocaleString()}; crimes against persons: ${Number(prior.PrsnTotal).toLocaleString()}; property: ${Number(prior.PrprtyTotal).toLocaleString()}; society: ${Number(prior.SctyTotal).toLocaleString()}.`;
+      body += `<p class="cs-annual-prior">${prior.year} from the same official file — Total: ${fmt(prior.total)}; persons: ${fmt(prior.PrsnTotal)}; property: ${fmt(prior.PrprtyTotal)}; society: ${fmt(prior.SctyTotal)}.</p>`;
     }
+    body += "</div>";
     const title = (region.meta && (region.meta.cardTitle || region.meta.label)) || "Annual totals";
     badgeMarker(
       centroidOf(features[0]),
-      `<span class="nbh-n">${summary.total != null ? Number(summary.total).toLocaleString() : (year || "Totals")}</span>`,
+      `<span class="nbh-n">${summary.total != null ? fmt(summary.total) : (year || "Totals")}</span>`,
       title,
       body,
       (region.meta && region.meta.cardNote) || "Annual agency totals, not incident-level and not real-time.",
-      "#1a5bd6"
+      "#1a5bd6",
+      {
+        className: "cs-annual-popup",
+        maxWidth: 300,
+        minWidth: 220,
+        autoPan: true,
+        keepInView: true,
+        autoPanPaddingTopLeft: [56, 12],
+        autoPanPaddingBottomRight: [56, 120],
+      }
     ).addTo(areaLayer);
   }
 
@@ -418,6 +483,22 @@
     } finally {
       state.callsLoading = false;
     }
+  }
+
+  function locPrecisionNote() {
+    return visibleRegions().some((r) => r.kind === "annual-summary")
+      ? "City-level annual totals only."
+      : "Neighborhood-level official data only.";
+  }
+
+  function refreshLocPrecision() {
+    const el = document.getElementById("locBar");
+    if (!el) return;
+    const text = el.textContent || "";
+    if (!/Neighborhood-level official data only|City-level annual totals only/.test(text)) return;
+    el.textContent = text
+      .replace(/Neighborhood-level official data only\.?/, locPrecisionNote())
+      .replace(/City-level annual totals only\.?/, locPrecisionNote());
   }
 
   function setCenter(lat, lng, label) {
@@ -445,12 +526,13 @@
     const covered = viewIntersectsCoverage();
     if (covered) {
       setLocMessage((label ? `Centered near ${label}` : "Centered here") +
-        " · default view is a 5-mile radius (zoom out to see more). Neighborhood-level official data only.");
+        " · default view is a 5-mile radius (zoom out to see more). " + locPrecisionNote());
     } else {
       setLocMessage((label ? `Centered near ${label}. ` : "") +
         "No public data feed for this area yet.");
     }
     render();
+    refreshLocPrecision();
   }
 
   function showRegion(id) {
@@ -463,6 +545,7 @@
     setCenter(lat, lng, fallback.label || (region && region.meta && region.meta.label) || id);
     const cov = region ? regionBounds(region) : null;
     if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13, animate: false });
+    refreshLocPrecision();
   }
 
   function showSpokane() {
