@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacy — CrimeStat</title>
+  <meta name="description" content="How CrimeStat uses and stores information on this free website app.">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("crimestat-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="legal-page">
+  <header>
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" width="36" height="36" alt="">
+      <span>CrimeStat</span>
+    </a>
+  </header>
+  <main class="legal-main">
+    <h1>Privacy</h1>
+    <p class="legal-updated">Last updated November 25, 2026.</p>
+    <p>CrimeStat is a free website you can also install on your phone’s home screen. This page describes what the site stores on your device and what it sends over the network. It does not invent practices that are not in the current site.</p>
+
+    <h2>Stored on your device</h2>
+    <p>CrimeStat uses your browser’s localStorage only. It does not create an account, and it does not use a CrimeStat login.</p>
+    <ul>
+      <li>Your light or dark theme choice, if you set one in the header toggle.</li>
+      <li>Your last map preferences: time window, pin or heat view, and which crime layers are turned on.</li>
+      <li>Whether you dismissed the “Add to Home Screen” hint, so that hint can stay hidden.</li>
+    </ul>
+    <p>You can clear this information by clearing this site’s data in your browser settings.</p>
+
+    <h2>Location</h2>
+    <p>If you tap “Nearby me,” your browser may ask for permission to use your location. That location is used only in your browser to center the map and to list nearby neighborhoods in the coverage area. CrimeStat does not send that location to its servers and does not store it.</p>
+    <p>If you search an address, ZIP code, or city, that search text is sent to CrimeStat’s address lookup, which forwards the query to OpenStreetMap Nominatim so the map can be placed. Nominatim’s use of that query is governed by OpenStreetMap’s own practices.</p>
+
+    <h2>Alerts form</h2>
+    <p>The “Sign up for alerts” form is a preview only. Submitting it does not send or store anything on a server.</p>
+
+    <h2>Map data and third-party services</h2>
+    <p>The crime information on the map is official public data for the areas that have a feed. It is shown as of the date on the site and is not a real-time feed. Locations are shown at neighborhood or area level only. Street addresses are not published on CrimeStat.</p>
+    <p>To display the map, your browser also requests:</p>
+    <ul>
+      <li>Map tiles from OpenStreetMap, Esri, or OpenTopoMap, depending on the base map you select. Those providers receive ordinary tile requests, which typically include your IP address and the map area being viewed.</li>
+      <li>The Leaflet map libraries from unpkg.</li>
+      <li>The Source Sans 3 font from Google Fonts.</li>
+    </ul>
+    <p>Those services have their own terms and privacy policies.</p>
+
+    <h2>Contact</h2>
+    <p>CrimeStat does not run a user account system. For the live site, use the website itself. This page will be updated if these practices change.</p>
+    <p><a href="/">Back to the map</a></p>
+  </main>
+</body>
+</html>

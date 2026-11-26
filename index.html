@@ -4,12 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>CrimeStat — Local Crime Map</title>
-  <meta name="description" content="CrimeStat is a free crime map with 19 toggleable crime-type layers. Current coverage: official Spokane Police Department public data, May 1 to Sep 27, 2026.">
+  <meta name="description" content="Free Spokane-area crime map with toggleable crime-type layers. Official public data as of its as-of date, not real-time. Install it on your iPhone or Android home screen from this website.">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CrimeStat">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta property="og:title" content="CrimeStat — Local Crime Map">
+  <meta property="og:description" content="Free Spokane-area crime map. Official public data as of its as-of date, not real-time.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://crimestat-rosy.vercel.app/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CrimeStat — Local Crime Map">
+  <meta name="twitter:description" content="Free Spokane-area crime map. Official public data as of its as-of date, not real-time.">
+  <meta name="twitter:image" content="https://crimestat-rosy.vercel.app/icons/icon-512.png">
   <script>
     (function () {
       try {
@@ -60,6 +72,14 @@
   <main>
     <div class="map-wrap">
       <div id="map" role="application" aria-label="Crime map"></div>
+      <div id="bootScreen" class="boot-screen" role="status">
+        <p>Loading official crime data…</p>
+      </div>
+      <div id="bootError" class="boot-screen boot-error" hidden role="alert">
+        <p><strong>Could not load official crime data.</strong></p>
+        <p>Check your connection and try again.</p>
+        <button type="button" id="bootRetry" class="primary">Try again</button>
+      </div>
       <div id="emptyState" class="empty-state" hidden>
         <p><strong>No public data feed for this area yet.</strong></p>
         <p>Official Spokane Police Department data is available. Search Spokane to view it.</p>
@@ -105,6 +125,7 @@
       <li><button type="button" data-open="alerts">Sign up for alerts</button></li>
       <li><button type="button" data-open="settings">Settings</button></li>
       <li><button type="button" data-open="layers">Crime layers</button></li>
+      <li><a href="/privacy">Privacy</a></li>
     </ul>
     <p class="drawer-label">Coming soon</p>
     <ul class="soon">
@@ -140,8 +161,9 @@
       <li><button type="button" id="settingsSpokane">View Spokane data</button></li>
     </ul>
     <h3>About this data</h3>
-    <p id="settingsAbout">Official City of Spokane Police Department public records. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat.</p>
+    <p id="settingsAbout">Official City of Spokane Police Department public records. This is Spokane-area public data as of its as-of date, not a real-time feed. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat.</p>
     <p>Time presets are measured from the data as-of date, not from today.</p>
+    <p><a href="/privacy">Privacy</a></p>
     <button type="button" class="sheet-close">Close</button>
   </section>
 
@@ -159,17 +181,24 @@
 
   <section id="panel-download" class="sheet" hidden aria-labelledby="downloadTitle">
     <div class="sheet-handle"></div>
-    <h2 id="downloadTitle">Download our app</h2>
-    <p>The CrimeStat app for iPhone and Android is coming soon, with the same map and layers, built with Expo. This website is available now.</p>
-    <div class="store-row">
-      <span class="store-badge">iOS — coming soon</span>
-      <span class="store-badge">Android — coming soon</span>
-    </div>
+    <h2 id="downloadTitle">Install CrimeStat</h2>
+    <p>You can install the free CrimeStat website on your iPhone or Android home screen. It works like an app: same map, same layers, no App Store or Google Play download.</p>
+    <button type="button" id="sheetInstallBtn" class="primary" hidden>Install app</button>
+    <p class="install-sheet-hint">On iPhone in Safari, tap the Share button, then Add to Home Screen. On Android in Chrome, use the Install app button when it appears.</p>
+    <p>A separate iPhone and Android app, built with Expo, is still coming later. It is not in the stores yet.</p>
     <button type="button" class="sheet-close">Close</button>
   </section>
 
+  <div id="installBar" class="install-bar" hidden>
+    <div class="install-bar-copy">
+      <button type="button" id="installAppBtn" class="install-cta" hidden>Install app</button>
+      <p id="iosInstallHint" hidden>Tap Share, then Add to Home Screen</p>
+    </div>
+    <button type="button" id="dismissInstall" class="install-dismiss" aria-label="Dismiss">×</button>
+  </div>
+
   <nav class="bottom-tab">
-    <button type="button" id="downloadBtn">Download our app</button>
+    <button type="button" id="downloadBtn">Install app</button>
   </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

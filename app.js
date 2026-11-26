@@ -117,17 +117,30 @@
 
   function iconFor(type) {
     const svg = state.svg[type];
-    if (!svg) return undefined;
     return L.divIcon({
       className: "cs-ico",
-      html: svg,
+      html: svg || '<span class="cs-ico-fallback" aria-hidden="true"></span>',
       iconSize: [26, 26],
       iconAnchor: [13, 13],
       popupAnchor: [0, -12],
     });
   }
 
+  let renderPending = false;
+
   function render() {
+    if (!map) return;
+    // Rebuilding markers mid-zoom can throw Leaflet's createIcon error in markercluster.
+    if (map._animatingZoom) {
+      if (!renderPending) {
+        renderPending = true;
+        map.once("zoomend", () => {
+          renderPending = false;
+          render();
+        });
+      }
+      return;
+    }
     if (pinLayer) pinLayer.clearLayers();
     if (areaLayer) areaLayer.clearLayers();
     if (callsLayer) callsLayer.clearLayers();
@@ -235,12 +248,11 @@
       for (const row of state.offenses.points) {
         const [t, n, d, x, y] = row;
         const type = state.types[t];
-        if (!type || !state.layers[type] || !inWindow(d)) continue;
+        if (!type || !state.layers[type] || !inWindow(d) || SENSITIVE.has(type)) continue;
         const feat = features[n];
         const name = feat ? feat.properties.name : "Unknown neighborhood";
-        const icon = iconFor(type);
         const marker = L.marker([y / 10000, x / 10000], {
-          icon,
+          icon: iconFor(type),
           title: LABELS[type],
           keyboard: false,
         }).bindPopup(popupHtml(
@@ -293,7 +305,7 @@
       fillOpacity: 1,
     }).addTo(map);
     map.invalidateSize();
-    map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 14 });
+    map.fitBounds(radiusCircle.getBounds(), { padding: [28, 28], maxZoom: 14, animate: false });
     const covered = viewIntersectsCoverage();
     if (covered) {
       setLocMessage((label ? `Centered near ${label}` : "Centered here") +
@@ -311,7 +323,7 @@
     const lng = c ? c[0] : SPOKANE_FALLBACK.lng;
     const lat = c ? c[1] : SPOKANE_FALLBACK.lat;
     setCenter(lat, lng, "Spokane, Washington");
-    if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13 });
+    if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13, animate: false });
   }
 
   function formatAddress(result) {
@@ -558,6 +570,8 @@
       maxClusterRadius: 48,
       disableClusteringAtZoom: 16,
       spiderfyOnMaxZoom: true,
+      animate: false,
+      animateAddingMarkers: false,
     }).addTo(map);
     map.setView([39.8283, -98.5795], 4);
     map.on("moveend", () => {
@@ -573,8 +587,117 @@
     });
   }
 
+  function isStandaloneApp() {
+    return window.matchMedia("(display-mode: standalone)").matches
+      || window.navigator.standalone === true;
+  }
+
+  function isIosSafari() {
+    const ua = navigator.userAgent || "";
+    const ios = /iPad|iPhone|iPod/.test(ua)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const webkit = /WebKit/i.test(ua);
+    const other = /CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
+    return ios && webkit && !other;
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => { /* ignore */ });
+    });
+  }
+
+  const INSTALL_HINT_KEY = "crimestat-install-hint";
+  let deferredInstall = null;
+
+  function hideInstallBar() {
+    const bar = document.getElementById("installBar");
+    if (bar) bar.hidden = true;
+  }
+
+  function showInstallBar(mode) {
+    const bar = document.getElementById("installBar");
+    const btn = document.getElementById("installAppBtn");
+    const hint = document.getElementById("iosInstallHint");
+    if (!bar || !btn || !hint) return;
+    if (mode === "android") {
+      btn.hidden = false;
+      hint.hidden = true;
+    } else {
+      btn.hidden = true;
+      hint.hidden = false;
+    }
+    bar.hidden = false;
+  }
+
+  async function promptInstall() {
+    if (!deferredInstall) return;
+    const ev = deferredInstall;
+    deferredInstall = null;
+    ev.prompt();
+    try { await ev.userChoice; } catch (_) { /* ignore */ }
+    hideInstallBar();
+  }
+
+  function initInstall() {
+    if (isStandaloneApp()) {
+      hideInstallBar();
+      document.body.classList.add("is-standalone");
+      return;
+    }
+
+    const sheetBtn = document.getElementById("sheetInstallBtn");
+    const barBtn = document.getElementById("installAppBtn");
+    const dismiss = document.getElementById("dismissInstall");
+    if (barBtn) barBtn.addEventListener("click", promptInstall);
+    if (sheetBtn) {
+      sheetBtn.addEventListener("click", async () => {
+        if (deferredInstall) {
+          await promptInstall();
+          return;
+        }
+        if (isIosSafari()) {
+          closeAll();
+          try {
+            const saved = localStorage.getItem(INSTALL_HINT_KEY);
+            if (saved !== "dismissed") showInstallBar("ios");
+          } catch (_) {
+            showInstallBar("ios");
+          }
+        }
+      });
+    }
+    if (dismiss) {
+      dismiss.addEventListener("click", () => {
+        hideInstallBar();
+        try { localStorage.setItem(INSTALL_HINT_KEY, "dismissed"); } catch (_) { /* ignore */ }
+      });
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstall = e;
+      if (sheetBtn) sheetBtn.hidden = false;
+      showInstallBar("android");
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredInstall = null;
+      hideInstallBar();
+    });
+
+    if (isIosSafari()) {
+      try {
+        if (localStorage.getItem(INSTALL_HINT_KEY) === "dismissed") return;
+      } catch (_) { /* show anyway */ }
+      showInstallBar("ios");
+    }
+  }
+
   function initEvents() {
     initTheme();
+    registerServiceWorker();
+    initInstall();
     window.addEventListener("resize", syncChromeHeight);
     syncChromeHeight();
     document.getElementById("menuBtn").addEventListener("click", () => {
@@ -689,15 +812,29 @@
     return res.text();
   }
 
+  async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not load " + url);
+    return res.json();
+  }
+
+  function setBootState(kind) {
+    const loading = document.getElementById("bootScreen");
+    const error = document.getElementById("bootError");
+    if (loading) loading.hidden = kind !== "loading";
+    if (error) error.hidden = kind !== "error";
+  }
+
   async function boot() {
     loadState();
     initMap();
     initEvents();
+    setBootState("loading");
 
     const [meta, neighborhoods, offenses] = await Promise.all([
-      fetch("/data/meta.json").then((r) => r.json()),
-      fetch("/data/neighborhoods.json").then((r) => r.json()),
-      fetch("/data/offenses.json").then((r) => r.json()),
+      fetchJson("/data/meta.json"),
+      fetchJson("/data/neighborhoods.json"),
+      fetchJson("/data/offenses.json"),
     ]);
     state.meta = meta;
     state.neighborhoods = neighborhoods;
@@ -709,14 +846,16 @@
     const svgs = await Promise.all(iconNames.map(loadSvg));
     iconNames.forEach((name, i) => { state.svg[name] = svgs[i]; });
 
-    document.getElementById("asOfBanner").textContent = meta.label;
+    document.getElementById("asOfBanner").textContent =
+      `${meta.label} This is public data as of that date, not a real-time feed.`;
     syncChromeHeight();
     document.getElementById("settingsAbout").textContent =
-      `${meta.label} Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat. ${meta.defaultWindowNote || ""}`;
+      `${meta.label} This is Spokane-area public data as of that as-of date, not a real-time feed. Locations are shown at neighborhood level only. Street addresses are not published on CrimeStat. ${meta.defaultWindowNote || ""}`;
 
     if (neighborhoods) nbhLayer.addData(neighborhoods);
     buildLayerList();
     syncControls();
+    setBootState("ready");
 
     const params = new URLSearchParams(location.search);
     const q = (params.get("q") || params.get("city") || "").trim();
@@ -726,8 +865,12 @@
     }
   }
 
-  boot().catch((err) => {
-    console.error(err);
-    document.getElementById("asOfBanner").textContent = "Could not load CrimeStat data.";
+  document.getElementById("bootRetry")?.addEventListener("click", () => {
+    location.reload();
+  });
+
+  boot().catch(() => {
+    document.getElementById("asOfBanner").textContent = "Could not load official crime data.";
+    setBootState("error");
   });
 })();
