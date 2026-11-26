@@ -453,7 +453,7 @@
       {
         className: "cs-annual-popup",
         maxWidth: 300,
-        minWidth: 220,
+        minWidth: 260,
         autoPan: true,
         keepInView: true,
         autoPanPaddingTopLeft: [56, 12],
