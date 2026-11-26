@@ -467,12 +467,86 @@
     backdrop.hidden = false;
   }
 
+  const THEME_KEY = "crimestat-theme";
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  }
+
+  function applyTheme(theme, persist) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+    const btn = document.getElementById("themeBtn");
+    if (btn) {
+      const dark = theme === "dark";
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+      btn.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#101826" : "#ffffff");
+    if (persist) {
+      try { localStorage.setItem(THEME_KEY, theme); } catch (_) { /* ignore */ }
+    }
+  }
+
+  function initTheme() {
+    applyTheme(currentTheme(), false);
+    const btn = document.getElementById("themeBtn");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        applyTheme(currentTheme() === "dark" ? "light" : "dark", true);
+      });
+    }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const followOs = (e) => {
+      try {
+        const saved = localStorage.getItem(THEME_KEY);
+        if (saved === "light" || saved === "dark") return;
+      } catch (_) { return; }
+      applyTheme(e.matches ? "dark" : "light", false);
+    };
+    if (mq.addEventListener) mq.addEventListener("change", followOs);
+    else if (mq.addListener) mq.addListener(followOs);
+  }
+
+  function esriTile(path, attribution, extra) {
+    return L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/" + path + "/MapServer/tile/{z}/{y}/{x}",
+      Object.assign({ attribution, maxZoom: 19 }, extra || {})
+    );
+  }
+
   function initMap() {
     map = L.map("map", { zoomControl: true, attributionControl: true });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    map.createPane("basemapLabels");
+    map.getPane("basemapLabels").style.zIndex = 250;
+    map.getPane("basemapLabels").style.pointerEvents = "none";
+
+    const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    const esriImageryAttr = 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community';
+    const esriRefAttr = 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
+    const otmAttr = 'Kartendaten: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende, SRTM | Kartendarstellung: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)';
+
+    const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+      attribution: osmAttr,
+    });
+    const satellite = esriTile("World_Imagery", esriImageryAttr);
+    const terrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      attribution: otmAttr,
+    });
+    const hybrid = L.layerGroup([
+      esriTile("World_Imagery", esriImageryAttr),
+      esriTile("Reference/World_Transportation", esriRefAttr, { pane: "basemapLabels" }),
+      esriTile("Reference/World_Boundaries_and_Places", esriRefAttr, { pane: "basemapLabels" }),
+    ]);
+    street.addTo(map);
+    L.control.layers(
+      { Street: street, Satellite: satellite, Terrain: terrain, Hybrid: hybrid },
+      {},
+      { position: "topright", collapsed: true }
+    ).addTo(map);
     nbhLayer = L.geoJSON(null, {
       style: { color: "#64748b", weight: 1.15, fillColor: "#ffffff", fillOpacity: 0 },
       interactive: false,
@@ -500,6 +574,7 @@
   }
 
   function initEvents() {
+    initTheme();
     window.addEventListener("resize", syncChromeHeight);
     syncChromeHeight();
     document.getElementById("menuBtn").addEventListener("click", () => {
