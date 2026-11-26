@@ -37,7 +37,7 @@
   <div id="asOfBanner" class="data-banner" role="status">Loading official data…</div>
   </div>
 
-  <div id="locBar" class="loc-bar">Turn on location or search an address to center the map.</div>
+  <div id="locBar" class="loc-bar">Tap Nearby me or search an address to center the map.</div>
 
   <main>
     <div class="map-wrap">
@@ -50,6 +50,9 @@
       <div class="map-controls">
         <div class="seg" role="group" aria-label="Time window">
           <button type="button" data-time="snapshot" class="is-on">Full snapshot</button>
+          <button type="button" data-time="30d">30 days</button>
+          <button type="button" data-time="60d">60 days</button>
+          <button type="button" data-time="90d">90 days</button>
           <button type="button" data-time="6m">6 months</button>
           <button type="button" data-time="1y">1 year</button>
           <button type="button" data-time="5y">5 years</button>
@@ -59,7 +62,7 @@
           <button type="button" data-view="pins" class="is-on">Pins</button>
         </div>
         <button type="button" id="layersBtn" class="ctrl-btn">Layers</button>
-        <button type="button" id="locateBtn" class="ctrl-btn" aria-label="Use my location">My location</button>
+        <button type="button" id="locateBtn" class="ctrl-btn" aria-label="Show neighborhoods near me">Nearby me</button>
       </div>
     </div>
 
@@ -115,7 +118,7 @@
     <h2 id="settingsTitle">Settings</h2>
     <ul class="settings-list">
       <li><button type="button" id="resetFilters">Reset layers, time, and view</button></li>
-      <li><button type="button" id="settingsLocate">Use my location</button></li>
+      <li><button type="button" id="settingsLocate">Nearby me</button></li>
       <li><button type="button" id="settingsSpokane">View Spokane data</button></li>
     </ul>
     <h3>About this data</h3>

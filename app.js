@@ -5,7 +5,7 @@
   const OFF_BY_DEFAULT = new Set(["domestic_violence", "stalking", "shots_fired", "calls"]);
   const START = Date.UTC(2026, 4, 1);
   const AS_OF = Date.UTC(2026, 8, 27);
-  const WINDOW_DAYS = { "6m": 182, "1y": 365, "5y": 365 * 5 };
+  const WINDOW_DAYS = { "30d": 30, "60d": 60, "90d": 90, "6m": 182, "1y": 365, "5y": 365 * 5 };
   const SPOKANE_FALLBACK = { lat: 47.6588, lng: -117.426, label: "Spokane, Washington" };
 
   const LABELS = {
@@ -353,6 +353,28 @@
     setCenter(lat, lng, fallbackLabel);
   }
 
+  function haversineMeters(lat1, lng1, lat2, lng2) {
+    const toR = (d) => (d * Math.PI) / 180;
+    const dLat = toR(lat2 - lat1);
+    const dLng = toR(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(a)));
+  }
+
+  function neighborhoodsByDistance(lat, lng) {
+    const feats = (state.neighborhoods && state.neighborhoods.features) || [];
+    return feats.map((feat) => {
+      const c = feat.properties && feat.properties.c;
+      const clat = c ? c[1] : NaN;
+      const clng = c ? c[0] : NaN;
+      const meters = Number.isFinite(clat) && Number.isFinite(clng)
+        ? haversineMeters(lat, lng, clat, clng)
+        : Infinity;
+      return { name: feat.properties.name, meters };
+    }).sort((a, b) => a.meters - b.meters);
+  }
+
+  // Nearby me: geolocation stays in the browser. It is not sent to a server or stored.
   function locateUser() {
     if (!navigator.geolocation) {
       setLocMessage("This browser can’t share a location. Search an address or ZIP instead.");
@@ -360,7 +382,22 @@
     }
     setLocMessage("Asking for your location…");
     navigator.geolocation.getCurrentPosition(
-      (pos) => useCoords(pos.coords.latitude, pos.coords.longitude),
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setCenter(lat, lng, "you");
+        const ranked = neighborhoodsByDistance(lat, lng);
+        const closest = ranked.filter((n) => n.meters <= MILES5).slice(0, 5);
+        if (closest.length) {
+          const names = closest.map((n) => n.name).join(", ");
+          setLocMessage(`Showing neighborhoods closest to you: ${names}. Neighborhood areas only — no addresses.`);
+        } else if (state.inCoverage) {
+          const names = ranked.slice(0, 5).map((n) => n.name).join(", ");
+          setLocMessage(`Showing neighborhoods closest to you: ${names}. Neighborhood areas only — no addresses.`);
+        } else {
+          setLocMessage("No public data feed near you yet. Nothing was sent or stored. Search an address or view Spokane.");
+        }
+      },
       (err) => {
         if (err && err.code === 1) {
           setLocMessage("Location is off. Search an address or ZIP, or view Spokane.");
@@ -368,7 +405,7 @@
           setLocMessage("Couldn’t get your location. Search an address or ZIP, or view Spokane.");
         }
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   }
 
@@ -611,8 +648,6 @@
     if (q) {
       document.getElementById("searchInput").value = q;
       await runSearch(q);
-    } else {
-      locateUser();
     }
   }
 
