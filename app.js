@@ -180,9 +180,14 @@
     center: null,
     inCoverage: false,
     visibleKey: "",
+    safetyScore: false,
+    typeQuery: "",
+    days: [0, 1, 2, 3, 4, 5, 6],
+    dateFrom: "",
+    dateTo: "",
   };
 
-  let map, pinLayer, areaLayer, heatLayer, radiusCircle, userMarker, nbhLayer, callsLayer;
+  let map, pinLayer, areaLayer, heatLayer, radiusCircle, userMarker, nbhLayer, callsLayer, scoreLayer;
 
   function loadState() {
     try {
@@ -191,6 +196,13 @@
       if (raw.time === "snapshot" || WINDOW_DAYS[raw.time]) state.time = raw.time;
       if (raw.view === "heat" || raw.view === "pins") state.view = raw.view;
       if (raw.layers && typeof raw.layers === "object") state.layers = { ...raw.layers };
+      if (typeof raw.safetyScore === "boolean") state.safetyScore = raw.safetyScore;
+      if (Array.isArray(raw.days)) {
+        const days = raw.days.map(Number).filter((d) => d >= 0 && d <= 6);
+        if (days.length) state.days = [...new Set(days)].sort();
+      }
+      if (typeof raw.dateFrom === "string") state.dateFrom = raw.dateFrom;
+      if (typeof raw.dateTo === "string") state.dateTo = raw.dateTo;
     } catch (_) { /* ignore */ }
   }
 
@@ -199,6 +211,10 @@
       time: state.time,
       view: state.view,
       layers: state.layers,
+      safetyScore: state.safetyScore,
+      days: state.days,
+      dateFrom: state.dateFrom,
+      dateTo: state.dateTo,
     }));
   }
 
@@ -223,6 +239,36 @@
     if (!Number.isFinite(start) || !Number.isFinite(asOf)) return false;
     const ms = start + day * 864e5;
     return asOf - ms <= WINDOW_DAYS[state.time] * 864e5;
+  }
+
+  function activeDays() {
+    return (state.days && state.days.length) ? state.days : [0, 1, 2, 3, 4, 5, 6];
+  }
+
+  function inFilters(region, day) {
+    if (!inWindow(region, day)) return false;
+    const start = regionStartMs(region);
+    if (!Number.isFinite(start)) return false;
+    const ms = start + day * 864e5;
+    const days = activeDays();
+    if (days.length < 7 && !days.includes(new Date(ms).getUTCDay())) return false;
+    if (state.dateFrom) {
+      const from = parseYmdUtc(state.dateFrom);
+      if (Number.isFinite(from) && ms < from) return false;
+    }
+    if (state.dateTo) {
+      const to = parseYmdUtc(state.dateTo);
+      if (Number.isFinite(to) && ms > to) return false;
+    }
+    return true;
+  }
+
+  function resetCrimeFilters() {
+    state.days = [0, 1, 2, 3, 4, 5, 6];
+    state.dateFrom = "";
+    state.dateTo = "";
+    state.typeQuery = "";
+    state.safetyScore = false;
   }
 
   function formatDay(region, day) {
@@ -427,7 +473,10 @@
     state.visibleKey = regions.map((r) => r.id).join(",");
     document.getElementById("emptyState").hidden = covered;
     if (covered) updateBanner(regions);
-    if (!covered) return;
+    if (!covered) {
+      updateScoreOverlay([]);
+      return;
+    }
 
     const heat = [];
 
@@ -462,7 +511,7 @@
       for (const row of region.offenses.areas || []) {
         const [t, n, d, c] = row;
         const type = types[t];
-        if (!type || !typeOn(region, type) || !inWindow(region, d)) continue;
+        if (!type || !typeOn(region, type) || !inFilters(region, d)) continue;
         if (!nbhArea.has(n)) nbhArea.set(n, {});
         nbhArea.get(n)[type] = (nbhArea.get(n)[type] || 0) + c;
       }
@@ -470,7 +519,7 @@
       if (state.layers.calls && region.calls) {
         const callCounts = new Map();
         for (const [n, d, c] of region.calls.cells || []) {
-          if (!inWindow(region, d)) continue;
+          if (!inFilters(region, d)) continue;
           callCounts.set(n, (callCounts.get(n) || 0) + c);
         }
         for (const feat of features) {
@@ -520,14 +569,14 @@
         for (const row of region.offenses.points || []) {
           const [t, n, d, x, y] = row;
           const type = types[t];
-          if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+          if (!type || !typeOn(region, type) || !inFilters(region, d) || SENSITIVE.has(type)) continue;
           heat.push([y / 10000, x / 10000, 0.6]);
         }
       } else {
         for (const row of region.offenses.points || []) {
           const [t, n, d, x, y, addr] = row;
           const type = types[t];
-          if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+          if (!type || !typeOn(region, type) || !inFilters(region, d) || SENSITIVE.has(type)) continue;
           const feat = features[n];
           const name = feat ? feat.properties.name : "Unknown neighborhood";
           const label = typeLabel(region, type);
@@ -552,6 +601,90 @@
     if (state.view === "heat" && heat.length) {
       heatLayer = L.heatLayer(heat, { radius: 28, blur: 22, maxZoom: 16, minOpacity: 0.28 });
       heatLayer.addTo(map);
+    }
+    updateScoreOverlay(regions);
+  }
+
+  const SCORE_COLORS = { low: "#86efac", mid: "#fde68a", high: "#fca5a5", thin: "#e5e7eb" };
+
+  function neighborhoodIncidentCount(region, nbhId) {
+    const types = region.meta.types || state.types;
+    let count = 0;
+    for (const row of region.offenses.points || []) {
+      const [t, n, d] = row;
+      const type = types[t];
+      if (!type || !inFilters(region, d) || type === "calls") continue;
+      if (n === nbhId) count += 1;
+    }
+    for (const row of region.offenses.areas || []) {
+      const [t, n, d, c] = row;
+      const type = types[t];
+      if (!type || !inFilters(region, d) || type === "calls") continue;
+      if (n === nbhId) count += c;
+    }
+    return count;
+  }
+
+  function scoreColorFor(rank, n) {
+    if (n <= 1) return SCORE_COLORS.mid;
+    const q = rank / (n - 1);
+    if (q <= 0.33) return SCORE_COLORS.low;
+    if (q <= 0.66) return SCORE_COLORS.mid;
+    return SCORE_COLORS.high;
+  }
+
+  function updateScoreOverlay(regions) {
+    if (scoreLayer && map) {
+      map.removeLayer(scoreLayer);
+      scoreLayer = null;
+    }
+    const legend = document.getElementById("scoreLegend");
+    const btn = document.getElementById("scoreBtn");
+    if (btn) {
+      btn.classList.toggle("is-on", !!state.safetyScore);
+      btn.setAttribute("aria-pressed", state.safetyScore ? "true" : "false");
+    }
+    if (legend) legend.hidden = !state.safetyScore;
+    if (!state.safetyScore || !map || !regions || !regions.length) return;
+
+    if (!map.getPane("scorePane")) {
+      map.createPane("scorePane");
+      map.getPane("scorePane").style.zIndex = 350;
+    }
+    scoreLayer = L.layerGroup().addTo(map);
+
+    for (const region of regions) {
+      if (region.kind === "annual-summary" || !region.offenses || !region.neighborhoods) continue;
+      const features = region.neighborhoods.features || [];
+      const tallies = features.map((feat) => ({
+        feat,
+        count: neighborhoodIncidentCount(region, feat.properties.id),
+      }));
+      const ranked = tallies.filter((row) => row.count >= 3).slice().sort((a, b) => a.count - b.count);
+      const asOf = formatAsOf(region.meta && region.meta.asOf);
+      const credit = (region.meta && (region.meta.credit || region.meta.source)) || "";
+      const city = regionDisplayName(region);
+
+      tallies.forEach((row) => {
+        const enough = row.count >= 3;
+        const rank = enough ? ranked.findIndex((r) => r === row) : -1;
+        const color = enough ? scoreColorFor(rank, ranked.length) : SCORE_COLORS.thin;
+        const label = !enough
+          ? "Not enough data"
+          : rank / Math.max(ranked.length - 1, 1) <= 0.33
+            ? "Lower official-incident count"
+            : rank / Math.max(ranked.length - 1, 1) <= 0.66
+              ? "Typical official-incident count"
+              : "Higher official-incident count";
+        const body = enough
+          ? `<strong>${row.count.toLocaleString()}</strong> official confirmed incidents in ${city} during the selected window.<br>${label}.`
+          : `Fewer than 3 official confirmed incidents in this window, so no score is shown.`;
+        const note = `Built only from official confirmed incidents, as of ${asOf || "the snapshot date"}. This is not a prediction and does not mean an area is safe or unsafe. Sensitive types are included as area totals, never as addresses. CAD calls are not included.${credit ? " " + credit : ""}`;
+        L.geoJSON(row.feat, {
+          pane: "scorePane",
+          style: { color: "#111827", weight: 1, fillColor: color, fillOpacity: 0.45 },
+        }).bindPopup(popupHtml(row.feat.properties.name, body, note)).addTo(scoreLayer);
+      });
     }
   }
 
@@ -947,7 +1080,7 @@
       for (const row of region.offenses.points || []) {
         const [t, n, d, x, y, addr] = row;
         const type = types[t];
-        if (!type || !typeOn(region, type) || !inWindow(region, d) || SENSITIVE.has(type)) continue;
+        if (!type || !typeOn(region, type) || !inFilters(region, d) || SENSITIVE.has(type)) continue;
         const ilat = y / 10000;
         const ilng = x / 10000;
         const dist = haversineMeters(lat, lng, ilat, ilng);
@@ -989,7 +1122,7 @@
     const shown = all.slice(0, NEAR_LIST_LIMIT);
     if (!all.length) {
       summary.textContent = viewIntersectsCoverage()
-        ? "No incidents in the selected types and time window within 50 miles."
+        ? "No incidents in the selected types, days, and time window within 50 miles."
         : "No public incident feed within 50 miles. Search a city or use the records guide.";
       list.innerHTML = "";
     } else {
@@ -1154,6 +1287,7 @@
     }
     items.push(`<li><label><span class="layer-icon">${state.svg.calls || ""}</span><input type="checkbox" data-layer="calls" ${state.layers.calls ? "checked" : ""}> <span>${LABELS.calls}</span><span class="meta">Starts off</span></label></li>`);
     list.innerHTML = items.join("");
+    applyLayerSearch();
     list.querySelectorAll("[data-group]").forEach((box) => {
       const group = LAYER_GROUPS.find((g) => g.id === box.dataset.group);
       if (!group) return;
@@ -1172,6 +1306,47 @@
     });
   }
 
+  function applyLayerSearch() {
+    const list = document.getElementById("layerList");
+    const q = (state.typeQuery || "").trim().toLowerCase();
+    if (!list) return;
+    const rows = [...list.children];
+    rows.forEach((li) => {
+      if (li.classList.contains("layer-group")) return;
+      const label = (li.textContent || "").toLowerCase();
+      li.classList.toggle("is-hidden", !!(q && !label.includes(q)));
+    });
+    rows.forEach((li) => {
+      if (!li.classList.contains("layer-group")) return;
+      let next = li.nextElementSibling;
+      let any = false;
+      while (next && !next.classList.contains("layer-group")) {
+        if (!next.classList.contains("is-hidden")) any = true;
+        next = next.nextElementSibling;
+      }
+      li.classList.toggle("is-hidden", !any);
+    });
+  }
+
+  function syncFilterControls() {
+    const days = activeDays();
+    document.querySelectorAll("[data-day]").forEach((btn) => {
+      btn.classList.toggle("is-on", days.includes(Number(btn.dataset.day)));
+    });
+    const from = document.getElementById("filterFrom");
+    const to = document.getElementById("filterTo");
+    if (from) from.value = state.dateFrom || "";
+    if (to) to.value = state.dateTo || "";
+    const search = document.getElementById("layerSearch");
+    if (search && search.value !== (state.typeQuery || "")) search.value = state.typeQuery || "";
+    const scoreBtn = document.getElementById("scoreBtn");
+    if (scoreBtn) {
+      scoreBtn.classList.toggle("is-on", !!state.safetyScore);
+      scoreBtn.setAttribute("aria-pressed", state.safetyScore ? "true" : "false");
+    }
+    applyLayerSearch();
+  }
+
   function syncControls() {
     document.querySelectorAll("[data-time]").forEach((btn) => {
       btn.classList.toggle("is-on", btn.dataset.time === state.time);
@@ -1182,6 +1357,7 @@
     document.querySelectorAll("[data-layer]").forEach((box) => {
       box.checked = !!state.layers[box.dataset.layer];
     });
+    syncFilterControls();
   }
 
   const backdrop = document.getElementById("backdrop");
@@ -1535,11 +1711,77 @@
       syncControls();
       render();
     });
+    const scoreBtn = document.getElementById("scoreBtn");
+    if (scoreBtn) {
+      scoreBtn.addEventListener("click", () => {
+        state.safetyScore = !state.safetyScore;
+        saveState();
+        syncControls();
+        render();
+      });
+    }
+    const layerSearch = document.getElementById("layerSearch");
+    if (layerSearch) {
+      layerSearch.addEventListener("input", () => {
+        state.typeQuery = layerSearch.value || "";
+        applyLayerSearch();
+      });
+    }
+    document.querySelectorAll("[data-day]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const day = Number(btn.dataset.day);
+        const selected = new Set(activeDays());
+        if (selected.size === 7) {
+          state.days = [day];
+        } else if (selected.has(day)) {
+          selected.delete(day);
+          state.days = selected.size ? [...selected].sort() : [0, 1, 2, 3, 4, 5, 6];
+        } else {
+          selected.add(day);
+          state.days = [...selected].sort();
+        }
+        saveState();
+        syncControls();
+        render();
+        const nearby = document.getElementById("panel-nearby");
+        if (nearby && !nearby.hidden && state.center && state.center.radiusMeters) openNearbyList();
+      });
+    });
+    const filterFrom = document.getElementById("filterFrom");
+    const filterTo = document.getElementById("filterTo");
+    function applyDateFilters() {
+      state.dateFrom = (filterFrom && filterFrom.value) || "";
+      state.dateTo = (filterTo && filterTo.value) || "";
+      if (state.dateFrom && state.dateTo && state.dateFrom > state.dateTo) {
+        const swap = state.dateFrom;
+        state.dateFrom = state.dateTo;
+        state.dateTo = swap;
+      }
+      saveState();
+      syncControls();
+      render();
+      const nearby = document.getElementById("panel-nearby");
+      if (nearby && !nearby.hidden && state.center && state.center.radiusMeters) openNearbyList();
+    }
+    if (filterFrom) filterFrom.addEventListener("change", applyDateFilters);
+    if (filterTo) filterTo.addEventListener("change", applyDateFilters);
+    const clearDates = document.getElementById("filterDatesClear");
+    if (clearDates) {
+      clearDates.addEventListener("click", () => {
+        state.dateFrom = "";
+        state.dateTo = "";
+        saveState();
+        syncControls();
+        render();
+      });
+    }
+
     document.getElementById("resetFilters").addEventListener("click", () => {
       state.time = "snapshot";
       state.view = "pins";
       for (const t of state.types) state.layers[t] = !OFF_BY_DEFAULT.has(t);
       state.layers.calls = false;
+      resetCrimeFilters();
       saveState();
       syncControls();
       render();

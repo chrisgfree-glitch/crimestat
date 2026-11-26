@@ -116,8 +116,19 @@
           <button type="button" data-view="pins" class="is-on">Pins</button>
         </div>
         <button type="button" id="layersBtn" class="ctrl-btn">Layers</button>
+        <button type="button" id="scoreBtn" class="ctrl-btn" aria-pressed="false" aria-label="Toggle neighborhood incident scores">Scores</button>
         <button type="button" id="locateBtn" class="ctrl-btn" aria-label="Show neighborhoods near me">Nearby me</button>
         <button type="button" id="officialMapBtn" class="ctrl-btn" hidden>Official map</button>
+      </div>
+      <div id="scoreLegend" class="score-legend" hidden>
+        <p><strong>Neighborhood incident score</strong></p>
+        <p>Official confirmed incidents in the selected window, compared with other neighborhoods in the same city. Not a prediction of safety.</p>
+        <ul>
+          <li><span class="swatch score-low"></span> Lower count</li>
+          <li><span class="swatch score-mid"></span> Typical</li>
+          <li><span class="swatch score-high"></span> Higher count</li>
+          <li><span class="swatch score-thin"></span> Not enough data</li>
+        </ul>
       </div>
     </div>
 
@@ -215,12 +226,34 @@
     <div class="sheet-handle"></div>
     <h2 id="layersTitle">Crime layers</h2>
     <ul id="layersFreshness" class="freshness-list"></ul>
+    <div class="crime-filters">
+      <label class="filter-search-label" for="layerSearch">Find a crime type</label>
+      <input id="layerSearch" type="search" placeholder="Search crime types" autocomplete="off">
+      <fieldset class="filter-days">
+        <legend>Day of week</legend>
+        <div class="seg filter-day-seg" role="group" aria-label="Day of week">
+          <button type="button" data-day="0" class="is-on">Sun</button>
+          <button type="button" data-day="1" class="is-on">Mon</button>
+          <button type="button" data-day="2" class="is-on">Tue</button>
+          <button type="button" data-day="3" class="is-on">Wed</button>
+          <button type="button" data-day="4" class="is-on">Thu</button>
+          <button type="button" data-day="5" class="is-on">Fri</button>
+          <button type="button" data-day="6" class="is-on">Sat</button>
+        </div>
+      </fieldset>
+      <div class="filter-dates">
+        <label>From <input type="date" id="filterFrom"></label>
+        <label>To <input type="date" id="filterTo"></label>
+        <button type="button" id="filterDatesClear" class="text-btn">Clear dates</button>
+      </div>
+      <p class="filter-note">Day and date filters apply inside the selected time window, using the official incident date. Time-of-day filtering is not available in the current snapshots.</p>
+    </div>
     <div class="layer-actions">
       <button type="button" id="layersAll">Default on</button>
       <button type="button" id="layersNone">All off</button>
     </div>
     <ul id="layerList" class="layer-list"></ul>
-    <p class="drawer-note">Types marked “area only” are neighborhood totals — never a pin or address. Calls are 911/CAD events, not confirmed crimes, and start off.</p>
+    <p class="drawer-note">Types marked “area only” are neighborhood totals — never a pin or address. Rape / sexual assault, verbal domestic calls, and stalking stay as area totals only. Juvenile cases are not shown. Calls are 911/CAD events, not confirmed crimes, and start off.</p>
     <button type="button" class="sheet-close">Close</button>
   </section>
 
