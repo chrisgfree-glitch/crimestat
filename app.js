@@ -25,6 +25,14 @@
     carnation: { lat: 47.63977, lng: -121.89453, label: "Carnation, Washington" },
     skykomish: { lat: 47.71056, lng: -121.35638, label: "Skykomish, Washington" },
     kcsoother: { lat: 47.45601, lng: -121.89378, label: "King County Sheriff other areas, Washington" },
+    tacoma: { lat: 47.2529, lng: -122.4443, label: "Tacoma, Washington" },
+    yakima: { lat: 46.6021, lng: -120.5059, label: "Yakima, Washington" },
+    bellevue: { lat: 47.6101, lng: -122.2015, label: "Bellevue, Washington" },
+    federalway: { lat: 47.3223, lng: -122.3126, label: "Federal Way, Washington" },
+    spokanevalley: { lat: 47.6733, lng: -117.2394, label: "Spokane Valley, Washington" },
+    lakewood: { lat: 47.1718, lng: -122.5185, label: "Lakewood, Washington" },
+    issaquah: { lat: 47.5301, lng: -122.0326, label: "Issaquah, Washington" },
+    bothell: { lat: 47.7601, lng: -122.2054, label: "Bothell, Washington" },
   };
 
   const EXTRA_SNAPSHOTS = [
@@ -44,6 +52,65 @@
     { id: "kcsoother", name: "King County Sheriff (other)", jump: "jumpKcsoOther", settings: "settingsKcsoOther" },
   ];
   const EXTRA_IDS = EXTRA_SNAPSHOTS.map((c) => c.id);
+
+  const OFFICIAL_MAPS = {
+    tacoma: {
+      title: "Tacoma",
+      mode: "embed",
+      openUrl: "https://public.tableau.com/app/profile/city.of.tacoma/viz/TacomaPoliceCrimeDashboard/CrimeDashboard-IntroPage",
+      embedUrl: "https://public.tableau.com/views/TacomaPoliceCrimeDashboard/CrimeDashboard-IntroPage?:embed=y&:showVizHome=no",
+      credit: "Tacoma Police Department Crime Dashboard, City of Tacoma (Tableau Public). Their dashboard chrome is shown as published. This is the official public view, not CrimeStat pins.",
+    },
+    yakima: {
+      title: "Yakima",
+      mode: "embed",
+      openUrl: "https://yakima.maps.arcgis.com/apps/webappviewer/index.html?id=b685891fc46a4c3c8cf5eb27d81ba9c8",
+      embedUrl: "https://yakima.maps.arcgis.com/apps/webappviewer/index.html?id=b685891fc46a4c3c8cf5eb27d81ba9c8",
+      credit: "Yakima Police Department Crime Data Explorer. Copyright City of Yakima. Their map tools stay visible. CrimeStat does not copy this data onto our pins (the official layer is CC BY-ND).",
+    },
+    bellevue: {
+      title: "Bellevue",
+      mode: "embed",
+      openUrl: "https://bpd-data.bellevuewa.gov/pages/incidents-dashboard",
+      embedUrl: "https://bpd-data.bellevuewa.gov/pages/incidents-dashboard",
+      credit: "Bellevue Police Department Incidents Dashboard. This is the official page, including their site chrome. It is calls for service, not official UCR/NIBRS, and is not copied onto CrimeStat pins.",
+    },
+    federalway: {
+      title: "Federal Way",
+      mode: "link",
+      openUrl: "https://www.communitycrimemap.com/?address=33325%208th%20Ave%20S%20Federal%20way%2cWA",
+      credit: "Official City of Federal Way Community Crime Map, powered by LexisNexis. LexisNexis terms do not allow framing, so CrimeStat links out instead of embedding.",
+      note: "Opens the official LexisNexis Community Crime Map that Federal Way’s crime-statistics page points to.",
+    },
+    spokanevalley: {
+      title: "Spokane Valley",
+      mode: "link",
+      openUrl: "https://communitycrimemap.com/?address=Spokane,WA&zoom=11",
+      credit: "Official Regional Crime Map linked from the City of Spokane Valley, powered by LexisNexis Community Crime Map. LexisNexis terms do not allow framing, so CrimeStat links out instead of embedding.",
+      note: "Also covers the Spokane County regional map used by Spokane Valley Police (sheriff contract).",
+    },
+    lakewood: {
+      title: "Lakewood",
+      mode: "link",
+      openUrl: "https://cityprotect.com/map/list/incidents?pageSize=2000&parentIncidentTypeIds=149,150,148,8,97,104,165,98,100,179,178,180,101,99,103,163,168,166,12,161,14,16,15&zoomLevel=15&latitude=47.16280420168911&longitude=-122.51819156616192&days=1,2,3,4,5,6,7&startHour=0&endHour=24&timezone=%2B00:00&relativeDate=pastMonth",
+      credit: "Official Lakewood Interactive Crime Map on CityProtect, linked from the City of Lakewood. CityProtect only allows framing of its own site, so CrimeStat links out.",
+      note: "Opens the official CityProtect map from the City of Lakewood crime-statistics page.",
+    },
+    issaquah: {
+      title: "Issaquah",
+      mode: "link",
+      openUrl: "https://www.issaquahwa.gov/3370/Data-and-Statistics",
+      credit: "City of Issaquah Police Data and Statistics. The city’s vendor crime-map page could not be framed here (it restricts embedding to a short allow-list).",
+      note: "Opens Issaquah’s official crime-data page.",
+    },
+    bothell: {
+      title: "Bothell",
+      mode: "link",
+      openUrl: "https://police-transparency-4-bothellgov.hub.arcgis.com/",
+      credit: "City of Bothell Police Transparency hub. CrimeStat links to the official site rather than embedding the whole homepage, and has not copied the datasets pending a clear reuse license.",
+      note: "Nightly incident and case statistics, with locations generalized to nearby intersections.",
+    },
+  };
 
   const LABELS = {
     burglary_residential: "Burglary — residential",
@@ -747,6 +814,58 @@
     });
     if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13, animate: false });
     refreshLocPrecision();
+    syncOfficialMapButton(id);
+    if (OFFICIAL_MAPS[id]) openOfficialMap(id);
+    else closeOfficialMap();
+  }
+
+  function closeOfficialMap() {
+    const sheet = document.getElementById("officialMapSheet");
+    const frame = document.getElementById("officialMapFrame");
+    if (sheet) sheet.hidden = true;
+    if (frame) frame.removeAttribute("src");
+  }
+
+  function syncOfficialMapButton(id) {
+    const btn = document.getElementById("officialMapBtn");
+    if (!btn) return;
+    const spec = id && OFFICIAL_MAPS[id];
+    btn.hidden = !spec;
+    if (spec) {
+      btn.dataset.region = id;
+      btn.textContent = spec.mode === "embed" ? "Official map" : "Official map (link)";
+    } else {
+      delete btn.dataset.region;
+    }
+  }
+
+  function openOfficialMap(id) {
+    const spec = OFFICIAL_MAPS[id];
+    const sheet = document.getElementById("officialMapSheet");
+    const title = document.getElementById("officialMapTitle");
+    const credit = document.getElementById("officialMapCredit");
+    const wrap = document.getElementById("officialMapFrameWrap");
+    const frame = document.getElementById("officialMapFrame");
+    const note = document.getElementById("officialMapLinkNote");
+    const open = document.getElementById("officialMapOpen");
+    if (!spec || !sheet || !title || !credit || !wrap || !frame || !note || !open) return;
+    title.textContent = spec.title;
+    credit.textContent = spec.credit || "";
+    open.href = spec.openUrl;
+    open.textContent = spec.mode === "embed" ? "Open full map" : "Open official map";
+    if (spec.mode === "embed" && spec.embedUrl) {
+      wrap.hidden = false;
+      if (frame.getAttribute("src") !== spec.embedUrl) frame.setAttribute("src", spec.embedUrl);
+      note.hidden = !spec.note;
+      note.textContent = spec.note || "";
+    } else {
+      wrap.hidden = true;
+      frame.removeAttribute("src");
+      note.hidden = false;
+      note.textContent = spec.note || "This official map cannot be shown inside CrimeStat, so it opens on the agency’s own site.";
+    }
+    sheet.hidden = false;
+    syncOfficialMapButton(id);
   }
 
   function showSpokane() {
@@ -1074,6 +1193,7 @@
     sheets.forEach((el) => { el.hidden = true; });
     backdrop.hidden = true;
     document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
+    closeOfficialMap();
   }
 
   function syncChromeHeight() {
@@ -1375,6 +1495,19 @@
       const settings = document.getElementById(city.settings);
       if (settings) settings.addEventListener("click", () => { closeAll(); showRegion(city.id); });
     }
+    const officialMapClose = document.getElementById("officialMapClose");
+    if (officialMapClose) officialMapClose.addEventListener("click", () => closeOfficialMap());
+    const officialMapBtn = document.getElementById("officialMapBtn");
+    if (officialMapBtn) officialMapBtn.addEventListener("click", () => {
+      const id = officialMapBtn.dataset.region;
+      if (id) openOfficialMap(id);
+    });
+    for (const id of Object.keys(OFFICIAL_MAPS)) {
+      const cap = { federalway: "FederalWay", spokanevalley: "SpokaneValley" }[id]
+        || (id[0].toUpperCase() + id.slice(1));
+      const settings = document.getElementById("settings" + cap);
+      if (settings) settings.addEventListener("click", () => { closeAll(); showRegion(id); });
+    }
 
     document.getElementById("layerList").addEventListener("change", async (e) => {
       const box = e.target.closest("[data-layer]");
@@ -1467,6 +1600,14 @@
       if (!hit && /carnation/i.test(q)) { showRegion("carnation"); return; }
       if (!hit && /skykomish/i.test(q)) { showRegion("skykomish"); return; }
       if (!hit && /king\s*county\s*sheriff|kcso\s*other|unincorporated\s*king/i.test(q)) { showRegion("kcsoother"); return; }
+      if (!hit && /\btacoma\b/i.test(q)) { showRegion("tacoma"); return; }
+      if (!hit && /\byakima\b/i.test(q)) { showRegion("yakima"); return; }
+      if (!hit && /bellevue/i.test(q)) { showRegion("bellevue"); return; }
+      if (!hit && /federal\s*way/i.test(q)) { showRegion("federalway"); return; }
+      if (!hit && /spokane\s*valley/i.test(q)) { showRegion("spokanevalley"); return; }
+      if (!hit && /\blakewood\b/i.test(q)) { showRegion("lakewood"); return; }
+      if (!hit && /issaquah/i.test(q)) { showRegion("issaquah"); return; }
+      if (!hit && /\bbothell\b/i.test(q)) { showRegion("bothell"); return; }
       if (!hit) {
         setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
         return;
@@ -1491,6 +1632,14 @@
       else if (/carnation/i.test(q)) showRegion("carnation");
       else if (/skykomish/i.test(q)) showRegion("skykomish");
       else if (/king\s*county\s*sheriff|kcso\s*other|unincorporated\s*king/i.test(q)) showRegion("kcsoother");
+      else if (/\btacoma\b/i.test(q)) showRegion("tacoma");
+      else if (/\byakima\b/i.test(q)) showRegion("yakima");
+      else if (/bellevue/i.test(q)) showRegion("bellevue");
+      else if (/federal\s*way/i.test(q)) showRegion("federalway");
+      else if (/spokane\s*valley/i.test(q)) showRegion("spokanevalley");
+      else if (/\blakewood\b/i.test(q)) showRegion("lakewood");
+      else if (/issaquah/i.test(q)) showRegion("issaquah");
+      else if (/\bbothell\b/i.test(q)) showRegion("bothell");
       else setLocMessage("Address lookup failed. Wait a moment and try again.");
     }
   }

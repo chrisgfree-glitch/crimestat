@@ -117,6 +117,7 @@
         </div>
         <button type="button" id="layersBtn" class="ctrl-btn">Layers</button>
         <button type="button" id="locateBtn" class="ctrl-btn" aria-label="Show neighborhoods near me">Nearby me</button>
+        <button type="button" id="officialMapBtn" class="ctrl-btn" hidden>Official map</button>
       </div>
     </div>
 
@@ -193,6 +194,14 @@
       <li><button type="button" id="settingsCarnation" hidden>View Carnation data</button></li>
       <li><button type="button" id="settingsSkykomish" hidden>View Skykomish data</button></li>
       <li><button type="button" id="settingsKcsoOther" hidden>View other King County Sheriff areas</button></li>
+      <li><button type="button" id="settingsTacoma">View Tacoma official map</button></li>
+      <li><button type="button" id="settingsYakima">View Yakima official map</button></li>
+      <li><button type="button" id="settingsBellevue">View Bellevue official map</button></li>
+      <li><button type="button" id="settingsFederalWay">Federal Way official map (link)</button></li>
+      <li><button type="button" id="settingsSpokaneValley">Spokane Valley official map (link)</button></li>
+      <li><button type="button" id="settingsLakewood">Lakewood official map (link)</button></li>
+      <li><button type="button" id="settingsIssaquah">Issaquah crime statistics (link)</button></li>
+      <li><button type="button" id="settingsBothell">Bothell police transparency (link)</button></li>
     </ul>
     <h3>About this data</h3>
     <ul id="dataFreshness" class="freshness-list"></ul>
@@ -249,5 +258,19 @@
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="/app.js"></script>
+
+  <section id="officialMapSheet" class="official-map-sheet" hidden aria-labelledby="officialMapTitle">
+    <div class="official-map-head">
+      <h2 id="officialMapTitle">Official map</h2>
+      <button type="button" id="officialMapClose" class="icon-btn" aria-label="Close official map">×</button>
+    </div>
+    <p id="officialMapCredit" class="official-map-credit"></p>
+    <div id="officialMapFrameWrap" class="official-map-frame-wrap" hidden>
+      <iframe id="officialMapFrame" title="Official agency crime map" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>
+    <p id="officialMapLinkNote" class="official-map-note" hidden></p>
+    <a id="officialMapOpen" class="primary official-map-open" href="#" target="_blank" rel="noopener noreferrer">Open full map</a>
+  </section>
+
 </body>
 </html>
