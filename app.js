@@ -674,8 +674,15 @@
     const c = region && region.meta && region.meta.center;
     const lng = c ? c[0] : fallback.lng;
     const lat = c ? c[1] : fallback.lat;
-    setCenter(lat, lng, fallback.label || (region && region.meta && region.meta.label) || id);
     const cov = region ? regionBounds(region) : null;
+    // City jump buttons are city-scoped; the 50-mile radius is only for Nearby me / granted location.
+    setCenter(lat, lng, fallback.label || (region && region.meta && region.meta.label) || id, {
+      radiusMeters: 0,
+      circle: false,
+      marker: false,
+      bounds: cov || undefined,
+      maxZoom: 13,
+    });
     if (cov) map.fitBounds(cov, { padding: [28, 28], maxZoom: 13, animate: false });
     refreshLocPrecision();
   }
