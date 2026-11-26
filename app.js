@@ -11,6 +11,9 @@
     seattle: { lat: 47.6062, lng: -122.3321, label: "Seattle, Washington" },
     kent: { lat: 47.3900, lng: -122.2135, label: "Kent, Washington" },
     auburn: { lat: 47.3073, lng: -122.2285, label: "Auburn, Washington" },
+    everett: { lat: 47.9789, lng: -122.2021, label: "Everett, Washington" },
+    shoreline: { lat: 47.7557, lng: -122.3415, label: "Shoreline, Washington" },
+    kenmore: { lat: 47.7573, lng: -122.2440, label: "Kenmore, Washington" },
   };
 
   const LABELS = {
@@ -163,6 +166,9 @@
     if (region.id === "seattle") {
       return "Location is the official 100-block or MCPP neighborhood, not a street address.";
     }
+    if (region.meta && region.meta.locationMode === "100block") {
+      return "Location is the official 100-block, not a street address.";
+    }
     return PIN_NOTE;
   }
 
@@ -201,6 +207,9 @@
     if (region.id === "seattle") return "Seattle";
     if (region.id === "kent") return "Kent";
     if (region.id === "auburn") return "Auburn";
+    if (region.id === "everett") return "Everett";
+    if (region.id === "shoreline") return "Shoreline";
+    if (region.id === "kenmore") return "Kenmore";
     return (region.meta && (region.meta.id || region.id)) || region.id;
   }
 
@@ -213,7 +222,9 @@
   function freshnessLine(region) {
     const asOf = formatAsOf(region.meta && region.meta.asOf);
     const cadence = (region.meta && region.meta.cadence) || "not a real-time feed";
-    return asOf ? `Data as of ${asOf} · updated ${cadence}` : `Updated ${cadence}`;
+    const credit = (region.meta && (region.meta.credit || region.meta.source)) || "";
+    const base = asOf ? `Data as of ${asOf} · updated ${cadence}` : `Updated ${cadence}`;
+    return credit ? `${base}. ${credit}` : base;
   }
 
   function syncFreshness() {
@@ -576,6 +587,9 @@
     "Other covered cities use neighborhood or 100-block locations, not street addresses.",
     "Neighborhood-level official data only.",
     "City-level annual totals only.",
+    "Official 100-block locations only.",
+    "Data: City of Everett / SNO911",
+    "data provided by permission of King County",
   ];
 
   function locPrecisionNote() {
@@ -592,6 +606,8 @@
         ? "Other covered cities use neighborhood or 100-block locations, not street addresses."
         : "Neighborhood-level official data only.");
     }
+    const credits = [...new Set(regions.map((r) => (r.meta && (r.meta.credit || r.meta.source)) || "").filter(Boolean))];
+    for (const credit of credits) notes.push(credit);
     return notes.join(" ") || "Neighborhood-level official data only.";
   }
 
@@ -1322,6 +1338,13 @@
     if (jumpAuburn) jumpAuburn.addEventListener("click", () => showRegion("auburn"));
     const settingsAuburn = document.getElementById("settingsAuburn");
     if (settingsAuburn) settingsAuburn.addEventListener("click", () => { closeAll(); showRegion("auburn"); });
+    for (const id of ["everett", "shoreline", "kenmore"]) {
+      const cap = id[0].toUpperCase() + id.slice(1);
+      const jump = document.getElementById("jump" + cap);
+      if (jump) jump.addEventListener("click", () => showRegion(id));
+      const settings = document.getElementById("settings" + cap);
+      if (settings) settings.addEventListener("click", () => { closeAll(); showRegion(id); });
+    }
 
     document.getElementById("layerList").addEventListener("change", async (e) => {
       const box = e.target.closest("[data-layer]");
@@ -1391,6 +1414,18 @@
         showRegion("auburn");
         return;
       }
+      if (!hit && /\beverett\b/i.test(q)) {
+        showRegion("everett");
+        return;
+      }
+      if (!hit && /\bshoreline\b/i.test(q)) {
+        showRegion("shoreline");
+        return;
+      }
+      if (!hit && /\bkenmore\b/i.test(q)) {
+        showRegion("kenmore");
+        return;
+      }
       if (!hit) {
         setLocMessage("No match for that address or ZIP. Try a city and state, or a 5-digit ZIP.");
         return;
@@ -1401,6 +1436,9 @@
       else if (/seattle/i.test(q)) showRegion("seattle");
       else if (/\bkent\b/i.test(q)) showRegion("kent");
       else if (/\bauburn\b/i.test(q)) showRegion("auburn");
+      else if (/\beverett\b/i.test(q)) showRegion("everett");
+      else if (/\bshoreline\b/i.test(q)) showRegion("shoreline");
+      else if (/\bkenmore\b/i.test(q)) showRegion("kenmore");
       else setLocMessage("Address lookup failed. Wait a moment and try again.");
     }
   }
@@ -1502,11 +1540,32 @@
       });
     } catch (_) { /* optional */ }
 
+    for (const id of ["everett", "shoreline", "kenmore"]) {
+      try {
+        const [cMeta, cNbh, cOff] = await Promise.all([
+          fetchJson(`/data/${id}/meta.json`),
+          fetchJson(`/data/${id}/neighborhoods.json`),
+          fetchJson(`/data/${id}/offenses.json`),
+        ]);
+        state.regions.push({
+          id,
+          kind: "incidents",
+          meta: cMeta,
+          neighborhoods: cNbh,
+          offenses: cOff,
+          calls: null,
+        });
+      } catch (_) { /* optional city snapshot */ }
+    }
+
     const coveredNames = [];
     for (const [id, jumpId, settingsId, name] of [
       ["seattle", "jumpSeattle", "settingsSeattle", "Seattle"],
       ["kent", "jumpKent", "settingsKent", "Kent"],
       ["auburn", "jumpAuburn", "settingsAuburn", "Auburn"],
+      ["everett", "jumpEverett", "settingsEverett", "Everett"],
+      ["shoreline", "jumpShoreline", "settingsShoreline", "Shoreline"],
+      ["kenmore", "jumpKenmore", "settingsKenmore", "Kenmore"],
     ]) {
       if (!findRegion(id)) continue;
       const jump = document.getElementById(jumpId);
@@ -1528,7 +1587,9 @@
     const aboutBits = state.regions.map((r) => {
       const label = r.meta.label || "";
       const note = r.meta.defaultWindowNote || "";
-      return [label, note].filter(Boolean).join(" ");
+      const credit = r.meta.credit || r.meta.source || "";
+      const text = [label, note].filter(Boolean).join(" ");
+      return credit && !text.includes(credit) ? `${text} ${credit}` : text;
     });
     document.getElementById("settingsAbout").textContent =
       `${aboutBits.join(" ")} Auburn pin popups show official street addresses from Auburn Police Department public data. In other covered cities, locations are shown at neighborhood, 100-block, or city level only.`;

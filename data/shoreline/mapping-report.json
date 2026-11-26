@@ -1,0 +1,72 @@
+{
+  "city": "Shoreline",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 495,
+  "layerCounts": {
+    "burglary_residential": 6,
+    "burglary_business": 0,
+    "theft": 150,
+    "home_invasion": 0,
+    "assault": 49,
+    "rape": 3,
+    "battery": 0,
+    "robbery": 1,
+    "vandalism": 46,
+    "arson": 0,
+    "auto_theft": 19,
+    "kidnapping": 0,
+    "fraud": 41,
+    "drugs": 23,
+    "weapons": 4,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 342,
+  "dropped": {
+    "arrest_only_or_society": 95,
+    "no_matching_layer": 56,
+    "no_official_point": 2
+  },
+  "droppedSum": 153,
+  "pointsOnMap": 339,
+  "areaCells": 3,
+  "areaIncidentSum": 3,
+  "missingOfficialPoint": 2,
+  "codeMapped": {
+    "23F|theft": 42,
+    "220|burglary_residential": 6,
+    "35A|drugs": 22,
+    "290|vandalism": 46,
+    "23H|theft": 44,
+    "240|auto_theft": 20,
+    "13B|assault": 47,
+    "23D|theft": 11,
+    "26B|fraud": 6,
+    "250|fraud": 2,
+    "26A|fraud": 16,
+    "23C|theft": 41,
+    "11D|rape": 2,
+    "26F|fraud": 9,
+    "210|fraud": 3,
+    "23G|theft": 12,
+    "520|weapons": 4,
+    "35B|drugs": 1,
+    "26E|fraud": 4,
+    "120|robbery": 1,
+    "13A|assault": 3,
+    "11A|rape": 1,
+    "26C|fraud": 1
+  },
+  "bytes": {
+    "meta": 1505,
+    "neighborhoods": 2798,
+    "offenses": 8582
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "city": "Kenmore",
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "offenseRows": 68,
+  "layerCounts": {
+    "burglary_residential": 0,
+    "burglary_business": 0,
+    "theft": 20,
+    "home_invasion": 0,
+    "assault": 10,
+    "rape": 1,
+    "battery": 0,
+    "robbery": 0,
+    "vandalism": 9,
+    "arson": 0,
+    "auto_theft": 1,
+    "kidnapping": 0,
+    "fraud": 3,
+    "drugs": 0,
+    "weapons": 2,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 0,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 46,
+  "dropped": {
+    "arrest_only_or_society": 15,
+    "no_matching_layer": 7
+  },
+  "droppedSum": 22,
+  "pointsOnMap": 45,
+  "areaCells": 1,
+  "areaIncidentSum": 1,
+  "missingOfficialPoint": 0,
+  "codeMapped": {
+    "23F|theft": 8,
+    "23H|theft": 8,
+    "26E|fraud": 2,
+    "26A|fraud": 1,
+    "290|vandalism": 9,
+    "23D|theft": 2,
+    "240|auto_theft": 1,
+    "13B|assault": 10,
+    "520|weapons": 2,
+    "11D|rape": 1,
+    "23C|theft": 2
+  },
+  "bytes": {
+    "meta": 1498,
+    "neighborhoods": 2315,
+    "offenses": 1158
+  }
+}

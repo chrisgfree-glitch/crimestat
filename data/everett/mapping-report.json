@@ -1,0 +1,63 @@
+{
+  "window": {
+    "start": "2026-08-27",
+    "end": "2026-11-24",
+    "asOf": "2026-11-24",
+    "days": 90
+  },
+  "incidentsInWindow": 30451,
+  "layerCounts": {
+    "burglary_residential": 86,
+    "burglary_business": 0,
+    "theft": 681,
+    "home_invasion": 0,
+    "assault": 188,
+    "rape": 0,
+    "battery": 0,
+    "robbery": 12,
+    "vandalism": 217,
+    "arson": 2,
+    "auto_theft": 82,
+    "kidnapping": 0,
+    "fraud": 191,
+    "drugs": 0,
+    "weapons": 61,
+    "domestic_violence": 0,
+    "stalking": 0,
+    "shots_fired": 15,
+    "missing_persons": 0
+  },
+  "layerCountsSum": 1535,
+  "dropped": {
+    "cad_or_no_matching_layer": 28766,
+    "held_juvenile_or_child": 144,
+    "no_official_point": 6
+  },
+  "droppedSum": 28916,
+  "pointsOnMap": 1535,
+  "areaCells": 0,
+  "areaIncidentSum": 0,
+  "missingOfficialPoint": 6,
+  "typeMapped": {
+    "ROBBERY|robbery": 12,
+    "ASSAULT|assault": 190,
+    "VEHICLE THEFT|auto_theft": 82,
+    "THEFT|theft": 607,
+    "MALICIOUS MISCHIEF/VANDALISM|vandalism": 217,
+    "WEAPON|weapons": 62,
+    "SHOPLIFT|theft": 74,
+    "FRAUD|fraud": 191,
+    "BURGLARY|burglary_residential": 89,
+    "ARSON|arson": 2,
+    "SHOTS INDESCRIMINATE/HEARD|shots_fired": 15
+  },
+  "skippedDataset": {
+    "id": "szww-y224",
+    "reason": "Police Cases metadata has no licenseId; City of Everett Open Data Terms of Use page did not yield complete reusable-license text in this pass, so public reuse is not clearly allowed."
+  },
+  "bytes": {
+    "meta": 1603,
+    "neighborhoods": 9949,
+    "offenses": 38553
+  }
+}
