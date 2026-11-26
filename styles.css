@@ -245,14 +245,23 @@ a { color: var(--accent); }
 }
 
 .empty-state {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  z-index: 25; width: min(92vw, 360px);
-  background: #fff; border-radius: 16px; padding: 20px 18px 16px;
-  box-shadow: 0 10px 40px rgba(15,23,42,0.25); text-align: center;
+  /* Docked at the top, clear of Leaflet +/- so the map can pan and zoom.
+     A centered overlay made drag/zoom look broken: the card stayed put while tiles moved. */
+  position: absolute;
+  top: 8px;
+  left: 54px; /* leaflet zoom control is ~40px at left:10 */
+  right: 8px;
+  transform: none;
+  z-index: 25;
+  width: auto;
+  max-width: 400px;
+  background: #fff; border-radius: 16px; padding: 12px 14px 10px;
+  box-shadow: 0 10px 40px rgba(15,23,42,0.25); text-align: left;
+  pointer-events: auto;
 }
-.empty-state p { margin: 0 0 10px; color: var(--muted); font-size: 14px; line-height: 1.45; }
-.empty-state p strong { color: var(--ink); display: block; font-size: 16px; margin-bottom: 4px; }
-.empty-state .primary { margin-top: 6px; }
+.empty-state p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.empty-state p strong { color: var(--ink); display: block; font-size: 15px; margin-bottom: 2px; }
+.empty-state .primary { margin-top: 4px; height: 40px; }
 .layer-list label { gap: 10px; }
 .layer-list .layer-icon {
   width: 28px; height: 28px; flex: 0 0 28px; display: block;
